@@ -1,0 +1,25 @@
+# Lua coverage
+*.lua.cov
+luacov.*
+luacov.stats.out
+
+# Compiled Lua
+*.luac
+
+# Test data
+data/
+notes/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Claude Code local settings
+.claude/

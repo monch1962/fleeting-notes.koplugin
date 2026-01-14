@@ -1,0 +1,10 @@
+return {
+  _all = {
+    coverage = false,
+  },
+  default = {
+    _all = {
+      verbose = true,
+    },
+  },
+}
