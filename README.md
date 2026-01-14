@@ -5,6 +5,7 @@ Capture quick notes while reading with Markdown support and Obsidian compatibili
 ## Features
 
 - **Auto-Save**: Notes are automatically saved as you type - first keystroke creates the file
+- **Save & New**: One tap to save current note and immediately start a new one
 - **Quick Note Capture**: Create notes without leaving your book
 - **Markdown Support**: Full Markdown syntax with toolbar buttons
 - **Obsidian Compatible**: Notes saved as timestamped `.md` files
@@ -15,6 +16,7 @@ Capture quick notes while reading with Markdown support and Obsidian compatibili
 - **First keystroke** creates a timestamped `.md` file (e.g., `2026-01-14-16-56-30.md`)
 - **Every keystroke** updates the existing file in real-time
 - **Done button** confirms the note and closes the editor
+- **Save & New button** saves current note and opens a fresh editor
 - **Delete button** prompts to delete the auto-saved file
 
 This means your notes are never lost - even if you accidentally close the editor or your device crashes, your note is already saved to disk.
@@ -138,9 +140,22 @@ Default data directory locations:
 1. Open "Fleeting Notes" from the plugins menu
 2. Type your note - the file is automatically created on your first keystroke
 3. Use toolbar buttons for Markdown formatting
-4. Tap "Done" to confirm and close, or "Delete" to remove the note
+4. When done, choose:
+   - **Done** - Close the editor (note already saved)
+   - **Save & New** - Save this note and immediately create a new one
+   - **Delete** - Remove this note
 
 **Note**: The note is continuously auto-saved as you type. You won't lose your work even if you accidentally close the editor.
+
+#### Quick Note Taking Workflow
+
+Use **Save & New** to rapidly capture multiple thoughts:
+1. Type your first note
+2. Tap "Save & New"
+3. Immediately start typing your next note
+4. Repeat as needed
+
+Perfect for capturing multiple fleeting notes while reading without leaving the editor.
 
 ### Markdown Toolbar
 

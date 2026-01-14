@@ -33,25 +33,35 @@ function Plugin:init()
   note_manager.ensure_notes_dir(self.notes_dir)
 end
 
---- Start the plugin
--- Called when user activates the plugin from the menu
-function Plugin:start()
+--- Create and show a new note editor
+-- @param content string: Optional initial content
+function Plugin:create_editor(content)
+  content = content or ""
+
   -- Create and show the editor
   local editor = MarkdownEditor:new{
-    content = "",
+    content = content,
     on_save = function(note)
-      -- Note was successfully saved
-      self:show_notification(_("Note saved: ") .. note.filename)
+      -- Note was successfully saved (also called by Save & New)
+      -- Don't show notification here - Save & New handles it
     end,
     on_close = function(saved)
       -- Editor was closed
-      if not saved then
-        self:show_notification(_("Note discarded"))
-      end
+      -- No notification needed - the individual buttons handle feedback
+    end,
+    on_new_note = function()
+      -- Create a new note immediately
+      self:create_editor("")
     end,
   }
 
   UIManager:show(editor)
+end
+
+--- Start the plugin
+-- Called when user activates the plugin from the menu
+function Plugin:start()
+  self:create_editor("")
 end
 
 --- Show a notification message

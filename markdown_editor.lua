@@ -32,6 +32,8 @@ local MarkdownEditor = InputContainer:extend{
   on_save = nil,
   -- Callback when editor is closed
   on_close = nil,
+  -- Callback to create a new note (for "Save & New" functionality)
+  on_new_note = nil,
   -- Editor dimensions (will be set by KOReader)
   face = Font:getFace("smallinfofont"),
   -- Toolbar button size
@@ -261,7 +263,20 @@ function MarkdownEditor:_buildActionButtons()
     callback = function()
       self:_doneAndClose()
     end,
-    width = 150,
+    width = 110,
+    height = 40,
+    font_face = "smallfont",
+    font_size = 18,
+    bordersize = 2,
+    radius = 5,
+  }
+
+  self.new_note_button = Button:new{
+    text = _("Save & New"),
+    callback = function()
+      self:_saveAndNewNote()
+    end,
+    width = 130,
     height = 40,
     font_face = "smallfont",
     font_size = 18,
@@ -274,7 +289,7 @@ function MarkdownEditor:_buildActionButtons()
     callback = function()
       self:_deleteAndClose()
     end,
-    width = 150,
+    width = 110,
     height = 40,
     font_face = "smallfont",
     font_size = 18,
@@ -294,9 +309,11 @@ function MarkdownEditor:_buildMainLayout()
 
   -- Action buttons row
   local action_group = HorizontalGroup:new{
-    HorizontalSpan:new{ width = 20 },
+    HorizontalSpan:new{ width = 15 },
     self.cancel_button,
-    HorizontalSpan:new{ width = 20 },
+    HorizontalSpan:new{ width = 15 },
+    self.new_note_button,
+    HorizontalSpan:new{ width = 15 },
     self.save_button,
   }
 
@@ -442,6 +459,82 @@ function MarkdownEditor:_doneAndClose()
 
     if self.on_close then
       self.on_close(false)
+    end
+  end
+end
+
+-- Save & New: close current note and immediately create a new one
+function MarkdownEditor:_saveAndNewNote()
+  local content = self.editor:getText()
+
+  -- If file was created, it's already saved
+  if self.auto_save_created and self.auto_save_filename then
+    -- Do one final save to ensure latest content is there
+    self:_doAutoSave()
+
+    -- Call save callback if provided
+    if self.on_save then
+      self.on_save({
+        filename = self.auto_save_filename,
+        content = content,
+        created_at = os.time(),
+      })
+    end
+
+    -- Close the current editor
+    UIManager:close(self.main_frame)
+
+    if self.on_close then
+      self.on_close(true)
+    end
+
+    -- Show brief notification then create new note
+    UIManager:show(InfoMessage:new{
+      text = _("Note saved: ") .. self.auto_save_filename,
+      timeout = 1,
+    })
+
+    -- Schedule new note creation (after notification closes)
+    UIManager:nextTick(function()
+      if self.on_new_note then
+        self.on_new_note()
+      end
+    end)
+  elseif note_manager.validate_content(content) then
+    -- Edge case: content exists but file wasn't created
+    local note = note_manager.create_note(content)
+    if note then
+      if self.on_save then
+        self.on_save(note)
+      end
+
+      UIManager:close(self.main_frame)
+
+      if self.on_close then
+        self.on_close(true)
+      end
+
+      UIManager:show(InfoMessage:new{
+        text = _("Note saved: ") .. note.filename,
+        timeout = 1,
+      })
+
+      UIManager:nextTick(function()
+        if self.on_new_note then
+          self.on_new_note()
+        end
+      end)
+    end
+  else
+    -- Empty content, just create new note
+    UIManager:close(self.main_frame)
+
+    if self.on_close then
+      self.on_close(false)
+    end
+
+    if self.on_new_note then
+      self.on_new_note()
     end
   end
 end
