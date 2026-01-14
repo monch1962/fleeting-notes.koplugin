@@ -15,7 +15,6 @@ local plugin_settings = require("settings")
 local Plugin = WidgetContainer:extend{
   name = "fleeting_notes",
   is_doc_only = false,
-  disabled = false,
 }
 
 --- Initialize the plugin
@@ -84,57 +83,9 @@ function Plugin:addToMainMenu(menu_items)
   menu_items.fleeting_notes = {
     text = _("Fleeting Notes"),
     sorting_hint = "more_tools",
-    keep_menu_open = true,
-    sub_item_table = {
-      {
-        text = _("New note"),
-        keep_menu_open = true,
-        callback = function()
-          self:start()
-        end,
-      },
-      {
-        text = _("Settings"),
-        separator = true,
-        keep_menu_open = true,
-        sub_item_table = {
-          {
-            text = _("Use color UI"),
-            keep_menu_open = true,
-            checked_func = function()
-              return plugin_settings.get_use_color_ui() == true
-            end,
-            callback = function()
-              local current = plugin_settings.get_use_color_ui()
-              local new_value
-
-              -- Toggle through states: auto -> on -> off -> auto
-              if current == nil then
-                new_value = true  -- Auto -> On
-              elseif current == true then
-                new_value = false  -- On -> Off
-              else
-                new_value = nil  -- Off -> Auto
-              end
-
-              plugin_settings.set_use_color_ui(new_value)
-
-              -- Show notification
-              local msg
-              if new_value == nil then
-                msg = _("Color UI: Auto-detect")
-              elseif new_value == true then
-                msg = _("Color UI: Enabled")
-              else
-                msg = _("Color UI: Disabled")
-              end
-
-              self:show_notification(msg)
-            end,
-          },
-        },
-      },
-    },
+    callback = function()
+      self:start()
+    end,
   }
 end
 

@@ -91,8 +91,8 @@ describe("Fleeting Notes Plugin", function()
   end)
 
   describe("plugin table", function()
-    it("should have disabled field", function()
-      assert.is.falsy(Plugin.disabled)
+    it("should have is_doc_only field", function()
+      assert.is.falsy(Plugin.is_doc_only)
     end)
 
     it("should have name field", function()
@@ -117,7 +117,6 @@ describe("Fleeting Notes Plugin", function()
       local test_plugin = {
         name = "fleeting_notes",
         is_doc_only = false,
-        disabled = false,
         ui = {
           menu = {
             registerToMainMenu = function() end
@@ -150,7 +149,6 @@ describe("Fleeting Notes Plugin", function()
       local test_plugin = {
         name = "fleeting_notes",
         is_doc_only = false,
-        disabled = false,
         ui = {
           menu = {
             registerToMainMenu = function() end
@@ -168,7 +166,7 @@ describe("Fleeting Notes Plugin", function()
   describe("integration", function()
     it("should be compatible with KOReader plugin interface", function()
       -- KOReader requires these fields/methods
-      assert.is.falsy(Plugin.disabled)  -- Should be false by default
+      assert.is.falsy(Plugin.is_doc_only)  -- Should be false by default (main menu)
       assert.is.truthy(Plugin.name)
       assert.is.truthy(type(Plugin.init) == "function")
       assert.is.truthy(type(Plugin.start) == "function")

@@ -71,7 +71,7 @@ This means your notes are never lost - even if you accidentally close the editor
 
 3. **Restart KOReader** (fully close and reopen the app)
 
-4. **Access the plugin**: Go to ☰ → Plugins → Fleeting Notes
+4. **Access the plugin**: Go to ☰ → More tools → Fleeting Notes
 
 ---
 
@@ -140,8 +140,8 @@ git clone https://github.com/yourusername/fleeting-notes.koplugin.git
 After restarting KOReader:
 
 1. Tap the ☰ menu
-2. Select "Plugins"
-3. Look for "Fleeting Notes" in the list
+2. Scroll to "More tools" section
+3. Look for "Fleeting Notes"
 4. Tap it to open the editor
 
 ### Finding Your Notes
@@ -163,7 +163,7 @@ Default data directory locations:
 
 ### Creating a Note
 
-1. Open "Fleeting Notes" from the plugins menu
+1. Open "Fleeting Notes" from the main menu (☰ → More tools)
 2. Type your note - the file is automatically created on your first keystroke
 3. Use toolbar buttons for Markdown formatting
 4. When done, choose:
@@ -207,26 +207,6 @@ Notes are saved with timestamp-based filenames:
 ```
 
 Each file contains standard Markdown content.
-
-### User Settings
-
-You can configure plugin behavior through KOReader's settings:
-
-#### Color UI Setting
-
-On color e-readers, you can disable the color UI:
-
-1. Open KOReader
-2. Go to ☰ → Settings → Plugins
-3. Find "Fleeting Notes"
-4. Toggle "Use color UI" on/off
-
-**Default**: Enabled on color devices, disabled on E-ink devices
-
-**File Location**: Settings are stored in:
-```
-<KOReader data directory>/fleeting-notes.settings.lua
-```
 
 ---
 
