@@ -20,6 +20,7 @@ local InfoMessage = require("ui/widget/infomessage")
 local ConfirmBox = require("ui/widget/confirmbox")
 local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
+local Screen = require("device").screen
 local _ = require("gettext")
 
 local markdown_formatter = require("markdown_formatter")
@@ -29,23 +30,31 @@ local plugin_settings = require("settings")
 
 -- Color support detection (respects user settings)
 -- Check if Blitbuffer.ColorRGB is available (not available in all KOReader versions)
-local has_color_support = plugin_settings.should_use_color() and Blitbuffer.ColorRGB ~= nil
+local has_color_support = plugin_settings.should_use_color() and type(Blitbuffer.ColorRGB) == "function"
+
+-- Helper function to create color if available
+local function make_color(r, g, b)
+  if has_color_support then
+    return Blitbuffer.ColorRGB(r, g, b)
+  end
+  return nil
+end
 
 -- Color palette for UI elements (only used when enabled and available)
 local colors = {
   -- Toolbar button colors
-  bold = has_color_support and Blitbuffer.ColorRGB(0, 100, 230) or nil,      -- Blue
-  italic = has_color_support and Blitbuffer.ColorRGB(0, 150, 50) or nil,     -- Green
-  code = has_color_support and Blitbuffer.ColorRGB(200, 140, 0) or nil,      -- Amber/Yellow
-  heading = has_color_support and Blitbuffer.ColorRGB(140, 50, 180) or nil,  -- Purple
-  list = has_color_support and Blitbuffer.ColorRGB(220, 100, 0) or nil,      -- Orange
-  link = has_color_support and Blitbuffer.ColorRGB(0, 160, 180) or nil,      -- Teal
-  wiki_link = has_color_support and Blitbuffer.ColorRGB(0, 180, 200) or nil, -- Cyan
+  bold = make_color(0, 100, 230),      -- Blue
+  italic = make_color(0, 150, 50),     -- Green
+  code = make_color(200, 140, 0),      -- Amber/Yellow
+  heading = make_color(140, 50, 180),  -- Purple
+  list = make_color(220, 100, 0),      -- Orange
+  link = make_color(0, 160, 180),      -- Teal
+  wiki_link = make_color(0, 180, 200), -- Cyan
 
   -- Action button colors
-  save = has_color_support and Blitbuffer.ColorRGB(50, 180, 80) or nil,      -- Green (primary)
-  save_new = has_color_support and Blitbuffer.ColorRGB(0, 120, 215) or nil,  -- Blue (secondary)
-  delete = has_color_support and Blitbuffer.ColorRGB(200, 50, 50) or nil,    -- Red (destructive)
+  save = make_color(50, 180, 80),      -- Green (primary)
+  save_new = make_color(0, 120, 215),  -- Blue (secondary)
+  delete = make_color(200, 50, 50),    -- Red (destructive)
 }
 
 -- Markdown Editor Widget with Auto-Save

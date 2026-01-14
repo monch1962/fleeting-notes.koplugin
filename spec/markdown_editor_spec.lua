@@ -193,6 +193,11 @@ describe("markdown_editor", function()
     -- Add Device mock
     local Device = {
       hasColorScreen = function() return false end,  -- Default to E-ink
+      screen = {
+        getWidth = function() return 600 end,
+        getHeight = function() return 800 end,
+        getSize = function() return {w = 600, h = 800} end,
+      }
     }
     package.loaded["device"] = Device
     _G.Device = Device
