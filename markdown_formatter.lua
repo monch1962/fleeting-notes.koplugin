@@ -112,9 +112,36 @@ function markdown_formatter.toggle_code(text)
   return markdown_formatter.wrap_code(text)
 end
 
+--- Wrap text in wiki link markers for Obsidian
+-- @param text string: Text to wrap
+-- @return string: Wiki link wrapped text
+function markdown_formatter.wrap_wiki_link(text)
+  return "[[" .. text .. "]]"
+end
+
+--- Toggle wiki link formatting (wrap or unwrap)
+-- @param text string: Text to toggle
+-- @return string: Text with wiki link toggled
+function markdown_formatter.toggle_wiki_link(text)
+  -- Check if already wrapped in wiki link
+  local trimmed = text:match("^%s*(.-)%s*$")
+
+  -- Check for [[text]] pattern
+  if trimmed:match("^%[%[%[.-%]%]%$") then
+    -- Unwrap: remove outer [[ and ]]
+    local unwrapped = trimmed:match("^%[%[%[(.-)%]%]%$")
+    if unwrapped then
+      return unwrapped
+    end
+  end
+
+  -- Not wrapped, wrap it
+  return markdown_formatter.wrap_wiki_link(text)
+end
+
 --- Apply formatting to selected text in a larger text
 -- @param full_text string: The full text content
--- @param format_type string: Type of formatting ("bold", "italic", "code", "heading", "list")
+-- @param format_type string: Type of formatting ("bold", "italic", "code", "heading", "list", "wiki_link")
 -- @param start_pos number: Start position of selection (1-indexed)
 -- @param end_pos number: End position of selection (1-indexed)
 -- @param ...: Additional parameters (e.g., heading level, ordered list)
@@ -155,6 +182,8 @@ function markdown_formatter.apply_formatting(full_text, format_type, start_pos, 
     formatted = markdown_formatter.toggle_italic(selection)
   elseif format_type == "code" then
     formatted = markdown_formatter.toggle_code(selection)
+  elseif format_type == "wiki_link" then
+    formatted = markdown_formatter.toggle_wiki_link(selection)
   elseif format_type == "heading" then
     -- Insert heading prefix at start of line
     local level = select(1, ...) or 1

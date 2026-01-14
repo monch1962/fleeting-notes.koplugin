@@ -168,6 +168,9 @@ Perfect for capturing multiple fleeting notes while reading without leaving the 
 | •- | Bullet list | `- item` |
 | 1. | Numbered list | `1. item` |
 | [L] | Link | `[text](url)` |
+| [[]] | Wiki link | `[[note]]` |
+
+**Wiki Links**: The `[[]]` button creates Obsidian-style links. Use these to link between your notes in Obsidian. For example, select "Character Analysis" and click `[[]]` to create `[[Character Analysis]]`, which will link to a note named "Character Analysis" in your Obsidian vault.
 
 ### Note Storage Format
 

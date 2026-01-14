@@ -134,6 +134,46 @@ describe("markdown_formatter", function()
     end)
   end)
 
+  describe("wrap_wiki_link", function()
+    it("should wrap text in wiki link markers", function()
+      local result = markdown_formatter.wrap_wiki_link("My Note")
+      assert.is.equals("[[My Note]]", result)
+    end)
+
+    it("should handle empty string", function()
+      local result = markdown_formatter.wrap_wiki_link("")
+      assert.is.equals("[[]]", result)
+    end)
+
+    it("should handle text with spaces", function()
+      local result = markdown_formatter.wrap_wiki_link("another note")
+      assert.is.equals("[[another note]]", result)
+    end)
+  end)
+
+  describe("toggle_wiki_link", function()
+    it("should wrap plain text in wiki link", function()
+      local result = markdown_formatter.toggle_wiki_link("My Note")
+      assert.is.equals("[[My Note]]", result)
+    end)
+
+    it("should unwrap already wiki-linked text", function()
+      local result = markdown_formatter.toggle_wiki_link("[[My Note]]")
+      assert.is.equals("My Note", result)
+    end)
+
+    it("should handle empty string", function()
+      local result = markdown_formatter.toggle_wiki_link("")
+      assert.is.equals("[[]]", result)
+    end)
+
+    it("should not unwrap if markers are mismatched", function()
+      local result = markdown_formatter.toggle_wiki_link("[[My Note]")
+      -- Should wrap it to make it complete
+      assert.is.equals("[[[My Note]]]", result)
+    end)
+  end)
+
   describe("toggle_bold", function()
     it("should wrap plain text in bold", function()
       local result = markdown_formatter.toggle_bold("hello")
@@ -210,6 +250,11 @@ describe("markdown_formatter", function()
     it("should apply code formatting to selection", function()
       local result = markdown_formatter.apply_formatting("hello world", "code", 1, 5)
       assert.is.equals("`hello` world", result)
+    end)
+
+    it("should apply wiki link formatting to selection", function()
+      local result = markdown_formatter.apply_formatting("hello world", "wiki_link", 1, 5)
+      assert.is.equals("[[hello]] world", result)
     end)
 
     it("should handle invalid format type", function()

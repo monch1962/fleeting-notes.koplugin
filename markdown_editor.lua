@@ -224,6 +224,15 @@ function MarkdownEditor:_buildToolbar()
     end,
   })
 
+  -- Wiki link button (for Obsidian [[links]])
+  table.insert(self.toolbar_buttons, {
+    id = "wiki_link",
+    text = "[[]]",
+    callback = function()
+      self:_applyCurrentSelection("wiki_link")
+    end,
+  })
+
   -- Create button widgets
   self.toolbar_button_widgets = {}
   for _, btn_spec in ipairs(self.toolbar_buttons) do
