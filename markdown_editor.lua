@@ -96,27 +96,6 @@ function MarkdownEditor:init()
 
   -- Map keyboard shortcuts
   self.key_events.Close = { { "Back" }, doc = "close editor" }
-  self.key_events.AutoSave = {
-    { "any" },
-    event = "KeyScroll",
-    handler = function(key_event)
-      return self:_onAnyKey(key_event)
-    end
-  }
-end
-
--- Called on any key press - triggers auto-save
-function MarkdownEditor:_onAnyKey(key_event)
-  -- Schedule auto-save for next tick (don't block input)
-  if not self.auto_save_pending then
-    self.auto_save_pending = true
-    UIManager:nextTick(function()
-      self:_doAutoSave()
-    end)
-  end
-
-  -- Return false to let the key event propagate to the TextBoxWidget
-  return false
 end
 
 -- Perform the auto-save operation
@@ -308,6 +287,15 @@ function MarkdownEditor:_buildEditor()
     scroll = true,
     alignment = "left",
     parent = self,
+    edit_callback = function()
+      -- Trigger auto-save when text is modified
+      if not self.auto_save_pending then
+        self.auto_save_pending = true
+        UIManager:nextTick(function()
+          self:_doAutoSave()
+        end)
+      end
+    end,
   }
 end
 
