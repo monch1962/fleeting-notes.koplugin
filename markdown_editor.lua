@@ -7,6 +7,7 @@ local UIManager = require("ui/uimanager")
 local Widget = require("ui/widget/widget")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local TextBoxWidget = require("ui/widget/textboxwidget")
+local InputText = require("ui/widget/inputtext")
 local Button = require("ui/widget/button")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
@@ -120,7 +121,7 @@ function MarkdownEditor:_doAutoSave()
   self.auto_save_pending = false
 
   -- Get current content
-  local current_content = self.editor.text or ""
+  local current_content = self.editor:getText()
 
   -- Don't save if empty
   if not note_manager.validate_content(current_content) then
@@ -296,16 +297,14 @@ end
 
 -- Build the text editor area
 function MarkdownEditor:_buildEditor()
-  self.editor = TextBoxWidget:new{
+  self.editor = InputText:new{
     text = self.content,
     face = self.face,
     width = math.min(Screen:getWidth() - 40, 600),
     height = math.min(Screen:getHeight() - 200, 400),
-    editable = true,
     scroll = true,
     alignment = "left",
-    para_direction_rtl = false,
-    lang = nil,
+    parent = self,
   }
 end
 
@@ -410,7 +409,7 @@ end
 -- @param ...: Additional parameters (e.g., heading level)
 function MarkdownEditor:_applyCurrentSelection(format_type, ...)
   -- Get current text
-  local current_text = self.editor.text or ""
+  local current_text = self.editor:getText()
 
   -- Get selection (if any) - TextBoxWidget may not expose this directly
   -- For now, we'll apply to the entire text or insert at cursor position
@@ -442,11 +441,11 @@ end
 function MarkdownEditor:_insertLink()
   -- In a full implementation, this would show input dialogs
   -- For now, insert a template link
-  local current_text = self.editor.text or ""
+  local current_text = self.editor:getText()
   local link_template = "[link text](url)"
 
   self.editor:setText(current_text .. " " .. link_template)
-  self.content = self.editor.text or ""
+  self.content = self.editor:getText()
 
   -- Trigger auto-save after inserting link
   self:_doAutoSave()
@@ -465,7 +464,7 @@ end
 
 -- Done: save final state and close (file already auto-saved)
 function MarkdownEditor:_doneAndClose()
-  local content = self.editor.text or ""
+  local content = self.editor:getText()
 
   -- If file was created, it's already saved
   if self.auto_save_created and self.auto_save_filename then
@@ -521,7 +520,7 @@ end
 
 -- Save & New: close current note and immediately create a new one
 function MarkdownEditor:_saveAndNewNote()
-  local content = self.editor.text or ""
+  local content = self.editor:getText()
 
   -- If file was created, it's already saved
   if self.auto_save_created and self.auto_save_filename then
@@ -631,7 +630,7 @@ end
 -- Public method to get current note info
 -- @return table|nil: Note object or nil if no content
 function MarkdownEditor:get_note()
-  local content = self.editor.text or ""
+  local content = self.editor:getText()
 
   if not note_manager.validate_content(content) then
     return nil
@@ -658,7 +657,7 @@ end
 function MarkdownEditor:onCloseWidget()
   -- Final auto-save before closing (if not already handled)
   if self.auto_save_created and self.auto_save_filename then
-    local content = self.editor.text or ""
+    local content = self.editor:getText()
     if note_manager.validate_content(content) then
       file_storage.save_note(self.auto_save_filename, content)
     end

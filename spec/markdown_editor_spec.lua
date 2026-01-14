@@ -121,6 +121,12 @@ describe("markdown_editor", function()
     TextBoxWidget.setText = function(self, text) self.text = text end
     package.loaded["ui/widget/textboxwidget"] = TextBoxWidget
 
+    -- InputText widget mock
+    local InputText = createWidgetMock()
+    InputText.getText = function(self) return self.text or "" end
+    InputText.setText = function(self, text) self.text = text end
+    package.loaded["ui/widget/inputtext"] = InputText
+
     package.loaded["ui/widget/button"] = createWidgetMock()
     package.loaded["ui/widget/horizontalgroup"] = createWidgetMock()
     package.loaded["ui/widget/verticalgroup"] = createWidgetMock()
@@ -269,6 +275,7 @@ describe("markdown_editor", function()
     package.loaded["ui/widget/widget"] = nil
     package.loaded["ui/widget/container/inputcontainer"] = nil
     package.loaded["ui/widget/textboxwidget"] = nil
+    package.loaded["ui/widget/inputtext"] = nil
     package.loaded["ui/widget/button"] = nil
     package.loaded["ui/widget/horizontalgroup"] = nil
     package.loaded["ui/widget/verticalgroup"] = nil
