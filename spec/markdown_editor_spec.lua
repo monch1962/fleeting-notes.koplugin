@@ -126,8 +126,8 @@ describe("markdown_editor", function()
     package.loaded["ui/widget/verticalgroup"] = createWidgetMock()
     package.loaded["ui/widget/horizontalspan"] = createWidgetMock()
     package.loaded["ui/widget/verticalspan"] = createWidgetMock()
-    package.loaded["ui/widget/centercontainer"] = createWidgetMock()
-    package.loaded["ui/widget/framecontainer"] = createWidgetMock()
+    package.loaded["ui/widget/container/centercontainer"] = createWidgetMock()
+    package.loaded["ui/widget/container/framecontainer"] = createWidgetMock()
     package.loaded["ui/widget/infomessage"] = createWidgetMock()
     package.loaded["ui/widget/confirmbox"] = createWidgetMock()
 
@@ -269,8 +269,8 @@ describe("markdown_editor", function()
     package.loaded["ui/widget/verticalgroup"] = nil
     package.loaded["ui/widget/horizontalspan"] = nil
     package.loaded["ui/widget/verticalspan"] = nil
-    package.loaded["ui/widget/centercontainer"] = nil
-    package.loaded["ui/widget/framecontainer"] = nil
+    package.loaded["ui/widget/container/centercontainer"] = nil
+    package.loaded["ui/widget/container/framecontainer"] = nil
     package.loaded["ui/widget/infomessage"] = nil
     package.loaded["ui/widget/confirmbox"] = nil
     package.loaded["ui/geom"] = nil
