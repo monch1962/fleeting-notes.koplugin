@@ -67,6 +67,7 @@ describe("Fleeting Notes Plugin", function()
     }
 
     package.loaded["settings"] = {
+      init = function() end,
       should_use_color = function() return false end,
       get_use_color_ui = function() return nil end,
       set_use_color_ui = function(value) end,

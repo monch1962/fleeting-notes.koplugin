@@ -30,6 +30,9 @@ function Plugin:init()
   file_storage.set_notes_dir(self.notes_dir)
   file_storage.ensure_notes_dir()
 
+  -- Initialize settings (creates settings file if needed)
+  plugin_settings.init()
+
   -- Register plugin in the main menu
   self.ui.menu:registerToMainMenu(self)
 end
@@ -95,7 +98,9 @@ function Plugin:addToMainMenu(menu_items)
           {
             text = _("Use color UI"),
             checked_func = function()
-              return plugin_settings.get_use_color_ui()
+              local setting = plugin_settings.get_use_color_ui()
+              -- Convert nil to false (auto-detect shows as unchecked)
+              return setting == true
             end,
             callback = function()
               local current = plugin_settings.get_use_color_ui()
