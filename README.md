@@ -4,10 +4,20 @@ Capture quick notes while reading with Markdown support and Obsidian compatibili
 
 ## Features
 
+- **Auto-Save**: Notes are automatically saved as you type - first keystroke creates the file
 - **Quick Note Capture**: Create notes without leaving your book
 - **Markdown Support**: Full Markdown syntax with toolbar buttons
 - **Obsidian Compatible**: Notes saved as timestamped `.md` files
 - **E-ink Optimized**: Designed for E-ink displays
+
+### Auto-Save Behavior
+
+- **First keystroke** creates a timestamped `.md` file (e.g., `2026-01-14-16-56-30.md`)
+- **Every keystroke** updates the existing file in real-time
+- **Done button** confirms the note and closes the editor
+- **Delete button** prompts to delete the auto-saved file
+
+This means your notes are never lost - even if you accidentally close the editor or your device crashes, your note is already saved to disk.
 
 ## Deployment / Installation
 
@@ -126,9 +136,11 @@ Default data directory locations:
 ### Creating a Note
 
 1. Open "Fleeting Notes" from the plugins menu
-2. Type your note in the text area
+2. Type your note - the file is automatically created on your first keystroke
 3. Use toolbar buttons for Markdown formatting
-4. Tap "Save" to save or "Cancel" to discard
+4. Tap "Done" to confirm and close, or "Delete" to remove the note
+
+**Note**: The note is continuously auto-saved as you type. You won't lose your work even if you accidentally close the editor.
 
 ### Markdown Toolbar
 

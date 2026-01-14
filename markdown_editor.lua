@@ -1,6 +1,7 @@
 -- markdown_editor.lua
 -- KOReader widget for editing Markdown notes with a toolbar
 -- Provides buttons for common Markdown formatting operations
+-- Auto-saves content to disk as user types
 
 local UIManager = require("ui/uimanager")
 local Widget = require("ui/widget/widget")
@@ -15,12 +16,15 @@ local CenterContainer = require("ui/widget/centercontainer")
 local FrameContainer = require("ui/widget/framecontainer")
 local Geom = require("ui/geom")
 local Font = require("ui/font")
+local InfoMessage = require("ui/widget/infomessage")
+local ConfirmBox = require("ui/widget/confirmbox")
 local _ = require("gettext")
 
 local markdown_formatter = require("markdown_formatter")
 local note_manager = require("note_manager")
+local file_storage = require("file_storage")
 
--- Markdown Editor Widget
+-- Markdown Editor Widget with Auto-Save
 local MarkdownEditor = InputContainer:extend{
   -- Initial content
   content = "",
@@ -38,6 +42,13 @@ function MarkdownEditor:init()
   -- Store initial content
   self.initial_content = self.content
 
+  -- Auto-save state
+  self.auto_save_enabled = true
+  self.auto_save_filename = nil  -- Set on first keystroke
+  self.auto_save_created = false  -- Becomes true after first save
+  self.last_saved_content = ""    -- Track last saved content for comparison
+  self.auto_save_pending = false  -- Flag for pending save operation
+
   -- Build UI
   self:_buildToolbar()
   self:_buildEditor()
@@ -46,6 +57,86 @@ function MarkdownEditor:init()
 
   -- Map keyboard shortcuts
   self.key_events.Close = { { "Back" }, doc = "close editor" }
+  self.key_events.AutoSave = {
+    { "any" },
+    event = "KeyScroll",
+    handler = function(key_event)
+      return self:_onAnyKey(key_event)
+    end
+  }
+end
+
+-- Called on any key press - triggers auto-save
+function MarkdownEditor:_onAnyKey(key_event)
+  -- Schedule auto-save for next tick (don't block input)
+  if not self.auto_save_pending then
+    self.auto_save_pending = true
+    UIManager:nextTick(function()
+      self:_doAutoSave()
+    end)
+  end
+
+  -- Return false to let the key event propagate to the TextBoxWidget
+  return false
+end
+
+-- Perform the auto-save operation
+function MarkdownEditor:_doAutoSave()
+  self.auto_save_pending = false
+
+  -- Get current content
+  local current_content = self.editor:getText()
+
+  -- Don't save if empty
+  if not note_manager.validate_content(current_content) then
+    return
+  end
+
+  -- Don't save if content hasn't changed
+  if current_content == self.last_saved_content then
+    return
+  end
+
+  -- Create file on first meaningful content
+  if not self.auto_save_created then
+    -- Create the note file with current timestamp
+    local note = note_manager.create_note(current_content)
+    if note then
+      self.auto_save_filename = note.filename
+      self.auto_save_created = true
+      self.last_saved_content = current_content
+
+      -- Update the title to show we're auto-saving
+      self:_updateTitle(true)
+
+      -- Show brief indicator
+      self:_showAutoSaveIndicator(true)
+    end
+  else
+    -- Update existing file
+    if self.auto_save_filename then
+      file_storage.save_note(self.auto_save_filename, current_content)
+      self.last_saved_content = current_content
+      self:_showAutoSaveIndicator(false)
+    end
+  end
+end
+
+-- Update the title to show auto-save status
+function MarkdownEditor:_updateTitle(has_file)
+  if has_file then
+    self.title_widget:setText(_("Fleeting Note (auto-saving)"))
+  else
+    self.title_widget:setText(_("Fleeting Note"))
+  end
+  UIManager:setDirty(self.main_frame, "ui")
+end
+
+-- Show a subtle auto-save indicator
+function MarkdownEditor:_showAutoSaveIndicator(is_new)
+  -- Brief indicator that auto-save happened
+  -- Don't show on E-ink devices to avoid unnecessary refreshes
+  -- Could add a small icon or status text if desired
 end
 
 -- Build the toolbar with Markdown formatting buttons
@@ -166,9 +257,9 @@ end
 -- Build save and cancel buttons
 function MarkdownEditor:_buildActionButtons()
   self.save_button = Button:new{
-    text = _("Save"),
+    text = _("Done"),
     callback = function()
-      self:_saveAndClose()
+      self:_doneAndClose()
     end,
     width = 150,
     height = 40,
@@ -179,9 +270,9 @@ function MarkdownEditor:_buildActionButtons()
   }
 
   self.cancel_button = Button:new{
-    text = _("Cancel"),
+    text = _("Delete"),
     callback = function()
-      self:_closeWithoutSaving()
+      self:_deleteAndClose()
     end,
     width = 150,
     height = 40,
@@ -209,6 +300,13 @@ function MarkdownEditor:_buildMainLayout()
     self.save_button,
   }
 
+  -- Title widget
+  self.title_widget = TextBoxWidget:new{
+    text = _("Fleeting Note"),
+    face = Font:getFace("tfont", 22),
+    width = math.min(Screen:getWidth() - 40, 600),
+  }
+
   -- Main vertical layout
   self.main_frame = FrameContainer:new{
     radius = 8,
@@ -218,11 +316,7 @@ function MarkdownEditor:_buildMainLayout()
     background = Blitbuffer.COLOR_WHITE,
     VerticalGroup:new{
       align = "center",
-      TextBoxWidget:new{
-        text = _("Fleeting Note"),
-        face = Font:getFace("tfont", 22),
-        width = math.min(Screen:getWidth() - 40, 600),
-      },
+      self.title_widget,
       VerticalSpan:new{ width = 10 },
       toolbar_group,
       VerticalSpan:new{ width = 10 },
@@ -264,6 +358,9 @@ function MarkdownEditor:_applyCurrentSelection(format_type, ...)
   self.editor:setText(formatted)
   self.content = formatted
 
+  -- Trigger auto-save after formatting
+  self:_doAutoSave()
+
   -- Trigger refresh for E-ink
   UIManager:setDirty(self.main_frame, "ui")
 end
@@ -278,6 +375,9 @@ function MarkdownEditor:_insertLink()
   self.editor:setText(current_text .. " " .. link_template)
   self.content = self.editor:getText()
 
+  -- Trigger auto-save after inserting link
+  self:_doAutoSave()
+
   UIManager:setDirty(self.main_frame, "ui")
 end
 
@@ -290,25 +390,22 @@ function MarkdownEditor:apply_formatting(format_type, start_pos, end_pos, ...)
   self:_applyCurrentSelection(format_type, ...)
 end
 
--- Save the note and close
-function MarkdownEditor:_saveAndClose()
+-- Done: save final state and close (file already auto-saved)
+function MarkdownEditor:_doneAndClose()
   local content = self.editor:getText()
 
-  -- Validate content
-  if not note_manager.validate_content(content) then
-    UIManager:show(InfoMessage:new{
-      text = _("Cannot save empty note"),
-    })
-    return
-  end
+  -- If file was created, it's already saved
+  if self.auto_save_created and self.auto_save_filename then
+    -- Do one final save to ensure latest content is there
+    self:_doAutoSave()
 
-  -- Save the note
-  local note = note_manager.create_note(content)
-
-  if note then
     -- Call save callback if provided
     if self.on_save then
-      self.on_save(note)
+      self.on_save({
+        filename = self.auto_save_filename,
+        content = content,
+        created_at = os.time(),
+      })
     end
 
     -- Close the editor
@@ -319,52 +416,104 @@ function MarkdownEditor:_saveAndClose()
     end
 
     UIManager:show(InfoMessage:new{
-      text = _("Note saved: ") .. note.filename,
+      text = _("Note saved: ") .. self.auto_save_filename,
+    })
+  elseif note_manager.validate_content(content) then
+    -- Edge case: content exists but file wasn't created (shouldn't happen)
+    local note = note_manager.create_note(content)
+    if note then
+      if self.on_save then
+        self.on_save(note)
+      end
+
+      UIManager:close(self.main_frame)
+
+      if self.on_close then
+        self.on_close(true)
+      end
+
+      UIManager:show(InfoMessage:new{
+        text = _("Note saved: ") .. note.filename,
+      })
+    end
+  else
+    -- Empty content, just close
+    UIManager:close(self.main_frame)
+
+    if self.on_close then
+      self.on_close(false)
+    end
+  end
+end
+
+-- Delete: remove the auto-saved file and close
+function MarkdownEditor:_deleteAndClose()
+  if self.auto_save_created and self.auto_save_filename then
+    -- Confirm deletion
+    UIManager:show(ConfirmBox:new{
+      text = _("Delete this note?"),
+      ok_text = _("Delete"),
+      cancel_text = _("Keep"),
+      ok_callback = function()
+        -- Delete the file
+        file_storage.delete_note(self.auto_save_filename)
+
+        UIManager:close(self.main_frame)
+
+        if self.on_close then
+          self.on_close(false)
+        end
+
+        UIManager:show(InfoMessage:new{
+          text = _("Note deleted"),
+        })
+      end,
     })
   else
-    UIManager:show(InfoMessage:new{
-      text = _("Failed to save note"),
-    })
+    -- No file was created, just close
+    UIManager:close(self.main_frame)
+
+    if self.on_close then
+      self.on_close(false)
+    end
   end
 end
 
--- Close without saving
-function MarkdownEditor:_closeWithoutSaving()
-  UIManager:close(self.main_frame)
-
-  if self.on_close then
-    self.on_close(false)
-  end
-end
-
--- Public method to save note (returns the note object)
--- @return table|nil: Note object or nil on failure
-function MarkdownEditor:save_note()
+-- Public method to get current note info
+-- @return table|nil: Note object or nil if no content
+function MarkdownEditor:get_note()
   local content = self.editor:getText()
 
   if not note_manager.validate_content(content) then
     return nil
   end
 
-  return note_manager.create_note(content)
+  return {
+    filename = self.auto_save_filename,
+    content = content,
+    created_at = os.time(),
+  }
 end
 
 -- Public method to close the editor
--- @param save boolean: Whether to save before closing
--- @return boolean, boolean|nil: Success status, whether note was saved
-function MarkdownEditor:close(save)
-  if save then
-    self:_saveAndClose()
-    return true, true
+-- @param delete boolean: Whether to delete the note (default: false)
+function MarkdownEditor:close(delete)
+  if delete then
+    self:_deleteAndClose()
   else
-    self:_closeWithoutSaving()
-    return true, false
+    self:_doneAndClose()
   end
 end
 
 -- Called when widget is closed
 function MarkdownEditor:onCloseWidget()
-  -- Cleanup if needed
+  -- Final auto-save before closing (if not already handled)
+  if self.auto_save_created and self.auto_save_filename then
+    local content = self.editor:getText()
+    if note_manager.validate_content(content) then
+      file_storage.save_note(self.auto_save_filename, content)
+    end
+  end
 end
 
 return MarkdownEditor
