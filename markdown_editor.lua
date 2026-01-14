@@ -5,7 +5,7 @@
 
 local UIManager = require("ui/uimanager")
 local Widget = require("ui/widget/widget")
-local InputContainer = require("ui/widget/inputcontainer")
+local InputContainer = require("ui/widget/container/inputcontainer")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local Button = require("ui/widget/button")
 local HorizontalGroup = require("ui/widget/horizontalgroup")

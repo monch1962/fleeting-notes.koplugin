@@ -47,7 +47,7 @@ describe("markdown_editor", function()
 
     package.loaded["ui/widget/widget"] = Widget
 
-    -- InputContainer extends Widget
+    -- InputContainer extends Widget (correct path for KOReader)
     local InputContainer = Widget:extend{
       key_events = {},  -- InputContainer has key_events by default
       new = function(cls, args)
@@ -78,7 +78,7 @@ describe("markdown_editor", function()
       end
     }
 
-    package.loaded["ui/widget/inputcontainer"] = InputContainer
+    package.loaded["ui/widget/container/inputcontainer"] = InputContainer
 
     -- Helper to create widget class mocks
     local function createWidgetMock()
@@ -262,7 +262,7 @@ describe("markdown_editor", function()
     package.loaded["ffi/blitbuffer"] = nil
     package.loaded["device"] = nil
     package.loaded["ui/widget/widget"] = nil
-    package.loaded["ui/widget/inputcontainer"] = nil
+    package.loaded["ui/widget/container/inputcontainer"] = nil
     package.loaded["ui/widget/textboxwidget"] = nil
     package.loaded["ui/widget/button"] = nil
     package.loaded["ui/widget/horizontalgroup"] = nil
