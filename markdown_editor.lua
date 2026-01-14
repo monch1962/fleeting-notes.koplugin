@@ -85,6 +85,9 @@ function MarkdownEditor:init()
   self.last_saved_content = ""    -- Track last saved content for comparison
   self.auto_save_pending = false  -- Flag for pending save operation
 
+  -- Store original editor height
+  self.original_editor_height = math.min(Screen:getHeight() - 200, 400)
+
   -- Build UI
   self:_buildToolbar()
   self:_buildEditor()
@@ -301,11 +304,42 @@ function MarkdownEditor:_buildEditor()
     text = self.content,
     face = self.face,
     width = math.min(Screen:getWidth() - 40, 600),
-    height = math.min(Screen:getHeight() - 200, 400),
+    height = self.original_editor_height,
     scroll = true,
     alignment = "left",
     parent = self,
   }
+end
+
+-- Handle keyboard being shown
+function MarkdownEditor:onShowKeyboard()
+  -- Reduce editor height to make room for keyboard
+  -- Typical keyboard height is around 300-400 pixels
+  local keyboard_height = 350
+  local new_height = self.original_editor_height - keyboard_height
+
+  -- Ensure minimum height
+  if new_height < 100 then
+    new_height = 100
+  end
+
+  if self.editor then
+    self.editor.height = new_height
+    -- Rebuild the text widget with new height
+    self.editor:initTextBox(self.editor:getText())
+    UIManager:setDirty(self.main_frame, "ui")
+  end
+end
+
+-- Handle keyboard being hidden
+function MarkdownEditor:onCloseKeyboard()
+  -- Restore original editor height
+  if self.editor then
+    self.editor.height = self.original_editor_height
+    -- Rebuild the text widget with original height
+    self.editor:initTextBox(self.editor:getText())
+    UIManager:setDirty(self.main_frame, "ui")
+  end
 end
 
 -- Build save and cancel buttons
