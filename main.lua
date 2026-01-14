@@ -10,6 +10,7 @@ local _ = require("gettext")
 -- Load local modules
 local MarkdownEditor = require("markdown_editor")
 local note_manager = require("note_manager")
+local plugin_settings = require("settings")
 
 local Plugin = WidgetContainer:extend{
   name = "fleeting_notes",
@@ -80,9 +81,60 @@ function Plugin:addToMainMenu(menu_items)
   menu_items.fleeting_notes = {
     text = _("Fleeting Notes"),
     sorting_hint = "more_tools",
-    callback = function()
-      self:start()
-    end,
+    sub_item_table = {
+      {
+        text = _("New note"),
+        callback = function()
+          self:start()
+        end,
+      },
+      {
+        text = _("Settings"),
+        separator = true,
+        sub_item_table = {
+          {
+            text = _("Use color UI"),
+            checked_func = function()
+              return plugin_settings.get_use_color_ui()
+            end,
+            callback = function()
+              local current = plugin_settings.get_use_color_ui()
+              local new_value
+
+              -- Toggle through states: auto -> on -> off -> auto
+              if current == nil then
+                new_value = true  -- Auto -> On
+              elseif current == true then
+                new_value = false  -- On -> Off
+              else
+                new_value = nil  -- Off -> Auto
+              end
+
+              plugin_settings.set_use_color_ui(new_value)
+
+              -- Show notification
+              local msg
+              if new_value == nil then
+                msg = _("Color UI: Auto-detect")
+              elseif new_value == true then
+                msg = _("Color UI: Enabled")
+              else
+                msg = _("Color UI: Disabled")
+              end
+
+              self:show_notification(msg)
+            end,
+            help_text = _([[
+Choose when to use color UI:
+• Auto-detect: Use colors on color devices
+• Enabled: Always use colors
+• Disabled: Never use colors
+
+Changes take effect when you open a new note.]]),
+          },
+        },
+      },
+    },
   }
 end
 

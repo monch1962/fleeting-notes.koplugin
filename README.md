@@ -10,6 +10,32 @@ Capture quick notes while reading with Markdown support and Obsidian compatibili
 - **Markdown Support**: Full Markdown syntax with toolbar buttons
 - **Obsidian Compatible**: Notes saved as timestamped `.md` files
 - **E-ink Optimized**: Designed for E-ink displays
+- **Color UI Support**: Color-coded buttons on color e-readers (optional)
+
+### Color E-reader Support
+
+The plugin automatically detects color e-readers and adds color-coded buttons:
+
+- **Bold**: Blue
+- **Italic**: Green
+- **Code**: Amber/Yellow
+- **Headings**: Purple
+- **Lists**: Orange
+- **Link**: Teal
+- **Wiki Link**: Cyan
+- **Done/Save**: Green (primary action)
+- **Save & New**: Blue (secondary action)
+- **Delete**: Red (destructive action)
+
+**Supported Color Devices**:
+- Kindle Oasis (10th gen+), Kindle Paperwhite (11th gen+)
+- Kobo Elipsa, Libra 2, Sage, Clara Colour
+- PocketBook Color, InkPad Color
+- Cervantes Color
+
+**E-ink Devices**: Color support is automatically disabled on grayscale E-ink devices - buttons use standard styling.
+
+**User Preference**: You can disable color UI even on color devices (see User Settings below).
 
 ### Auto-Save Behavior
 
@@ -181,6 +207,26 @@ Notes are saved with timestamp-based filenames:
 ```
 
 Each file contains standard Markdown content.
+
+### User Settings
+
+You can configure plugin behavior through KOReader's settings:
+
+#### Color UI Setting
+
+On color e-readers, you can disable the color UI:
+
+1. Open KOReader
+2. Go to ☰ → Settings → Plugins
+3. Find "Fleeting Notes"
+4. Toggle "Use color UI" on/off
+
+**Default**: Enabled on color devices, disabled on E-ink devices
+
+**File Location**: Settings are stored in:
+```
+<KOReader data directory>/fleeting-notes.settings.lua
+```
 
 ---
 

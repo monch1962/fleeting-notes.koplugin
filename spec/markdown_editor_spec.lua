@@ -143,6 +143,17 @@ describe("markdown_editor", function()
       getFace = function(name) return {} end
     }
 
+    -- Add LuaSettings mock
+    package.loaded["luasettings"] = {
+      open = function(path)
+        return {
+          readSetting = function(self, key, default) return default end,
+          saveSetting = function(self, key, value) end,
+          flush = function(self) end,
+        }
+      end
+    }
+
     -- Add Screen mock
     package.loaded["ui/device"] = {
       screen = {
@@ -225,6 +236,18 @@ describe("markdown_editor", function()
       end,
     }
 
+    package.loaded["file_storage"] = {
+      set_notes_dir = function() return true end,
+      get_notes_dir = function() return "/tmp/notes" end,
+      ensure_notes_dir = function() return true end,
+      save_note = function() return true end,
+    }
+
+    -- Mock settings module
+    package.loaded["settings"] = {
+      should_use_color = function() return false end,  -- Default to E-ink
+    }
+
     markdown_editor = require("markdown_editor")
   end)
 
@@ -232,6 +255,9 @@ describe("markdown_editor", function()
     package.loaded["markdown_editor"] = nil
     package.loaded["markdown_formatter"] = nil
     package.loaded["note_manager"] = nil
+    package.loaded["file_storage"] = nil
+    package.loaded["settings"] = nil
+    package.loaded["luasettings"] = nil
     package.loaded["gettext"] = nil
     package.loaded["ffi/blitbuffer"] = nil
     package.loaded["device"] = nil

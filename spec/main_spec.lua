@@ -56,6 +56,22 @@ describe("Fleeting Notes Plugin", function()
       ensure_notes_dir = function() return true end,
     }
 
+    package.loaded["luasettings"] = {
+      open = function(path)
+        return {
+          readSetting = function(self, key, default) return default end,
+          saveSetting = function(self, key, value) end,
+          flush = function(self) end,
+        }
+      end
+    }
+
+    package.loaded["settings"] = {
+      should_use_color = function() return false end,
+      get_use_color_ui = function() return nil end,
+      set_use_color_ui = function(value) end,
+    }
+
     -- Load the plugin
     Plugin = require("main")
   end)
@@ -65,6 +81,8 @@ describe("Fleeting Notes Plugin", function()
     package.loaded["markdown_editor"] = nil
     package.loaded["note_manager"] = nil
     package.loaded["file_storage"] = nil
+    package.loaded["settings"] = nil
+    package.loaded["luasettings"] = nil
     package.loaded["gettext"] = nil
     package.loaded["ui/uimanager"] = nil
     package.loaded["datastorage"] = nil
