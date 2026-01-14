@@ -14,7 +14,7 @@ local plugin_settings = require("settings")
 
 local Plugin = WidgetContainer:extend{
   name = "fleeting_notes",
-  is_doc_only = false,
+  is_doc_only = true,
   disabled = false,
 }
 
