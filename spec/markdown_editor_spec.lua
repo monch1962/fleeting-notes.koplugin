@@ -131,7 +131,7 @@ describe("markdown_editor", function()
     package.loaded["ui/widget/infomessage"] = createWidgetMock()
     package.loaded["ui/widget/confirmbox"] = createWidgetMock()
 
-    package.loaded["ui/geom"] = {
+    package.loaded["ui/geometry"] = {
       new = function(cls, tbl)
         local obj = tbl or {}
         setmetatable(obj, {__index = cls})
@@ -273,7 +273,7 @@ describe("markdown_editor", function()
     package.loaded["ui/widget/container/framecontainer"] = nil
     package.loaded["ui/widget/infomessage"] = nil
     package.loaded["ui/widget/confirmbox"] = nil
-    package.loaded["ui/geom"] = nil
+    package.loaded["ui/geometry"] = nil
     package.loaded["ui/font"] = nil
     package.loaded["ui/uimanager"] = nil
   end)
