@@ -85,8 +85,10 @@ function MarkdownEditor:init()
   self.last_saved_content = ""    -- Track last saved content for comparison
   self.auto_save_pending = false  -- Flag for pending save operation
 
-  -- Store original editor height
-  self.original_editor_height = math.min(Screen:getHeight() - 200, 400)
+  -- Store original editor height (make it larger - use more of the screen)
+  -- Reserve space for: title (50) + toolbar (50) + buttons (60) + margins (40) = 200
+  local available_height = Screen:getHeight() - 200
+  self.original_editor_height = math.min(available_height, 600)
 
   -- Build UI
   self:_buildToolbar()
@@ -282,7 +284,7 @@ function MarkdownEditor:_buildEditor()
   self.editor = InputText:new{
     text = self.content,
     face = self.face,
-    width = math.min(Screen:getWidth() - 40, 600),
+    width = math.min(Screen:getWidth() - 40, 800),  -- Increased max width
     height = self.original_editor_height,
     scroll = true,
     alignment = "left",
@@ -297,10 +299,32 @@ function MarkdownEditor:_buildEditor()
       end
     end,
   }
+
+  -- Hook into keyboard show/hide events
+  local original_onShowKeyboard = self.editor.onShowKeyboard
+  local original_onCloseKeyboard = self.editor.onCloseKeyboard
+
+  self.editor.onShowKeyboard = function(...)
+    -- Call original first
+    if original_onShowKeyboard then
+      original_onShowKeyboard(self.editor, ...)
+    end
+    -- Then adjust our layout
+    self:_onKeyboardShown()
+  end
+
+  self.editor.onCloseKeyboard = function(...)
+    -- Call original first
+    if original_onCloseKeyboard then
+      original_onCloseKeyboard(self.editor, ...)
+    end
+    -- Then adjust our layout
+    self:_onKeyboardHidden()
+  end
 end
 
 -- Handle keyboard being shown
-function MarkdownEditor:onShowKeyboard()
+function MarkdownEditor:_onKeyboardShown()
   -- Reduce editor height to make room for keyboard
   -- Typical keyboard height is around 300-400 pixels
   local keyboard_height = 350
@@ -320,7 +344,7 @@ function MarkdownEditor:onShowKeyboard()
 end
 
 -- Handle keyboard being hidden
-function MarkdownEditor:onCloseKeyboard()
+function MarkdownEditor:_onKeyboardHidden()
   -- Restore original editor height
   if self.editor then
     self.editor.height = self.original_editor_height
