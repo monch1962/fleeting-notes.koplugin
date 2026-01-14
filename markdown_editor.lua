@@ -18,11 +18,33 @@ local Geom = require("ui/geom")
 local Font = require("ui/font")
 local InfoMessage = require("ui/widget/infomessage")
 local ConfirmBox = require("ui/widget/confirmbox")
+local Blitbuffer = require("ffi/blitbuffer")
+local Device = require("device")
 local _ = require("gettext")
 
 local markdown_formatter = require("markdown_formatter")
 local note_manager = require("note_manager")
 local file_storage = require("file_storage")
+
+-- Color support detection
+local has_color_screen = Device:hasColorScreen()
+
+-- Color palette for UI elements (only used on color devices)
+local colors = {
+  -- Toolbar button colors
+  bold = has_color_screen and Blitbuffer.ColorRGB(0, 100, 230) or nil,      -- Blue
+  italic = has_color_screen and Blitbuffer.ColorRGB(0, 150, 50) or nil,     -- Green
+  code = has_color_screen and Blitbuffer.ColorRGB(200, 140, 0) or nil,      -- Amber/Yellow
+  heading = has_color_screen and Blitbuffer.ColorRGB(140, 50, 180) or nil,  -- Purple
+  list = has_color_screen and Blitbuffer.ColorRGB(220, 100, 0) or nil,      -- Orange
+  link = has_color_screen and Blitbuffer.ColorRGB(0, 160, 180) or nil,      -- Teal
+  wiki_link = has_color_screen and Blitbuffer.ColorRGB(0, 180, 200) or nil, -- Cyan
+
+  -- Action button colors
+  save = has_color_screen and Blitbuffer.ColorRGB(50, 180, 80) or nil,      -- Green (primary)
+  save_new = has_color_screen and Blitbuffer.ColorRGB(0, 120, 215) or nil,  -- Blue (secondary)
+  delete = has_color_screen and Blitbuffer.ColorRGB(200, 50, 50) or nil,    -- Red (destructive)
+}
 
 -- Markdown Editor Widget with Auto-Save
 local MarkdownEditor = InputContainer:extend{
@@ -149,6 +171,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "bold",
     text = "**B**",
+    color = colors.bold,
     callback = function()
       self:_applyCurrentSelection("bold")
     end,
@@ -158,6 +181,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "italic",
     text = "*I*",
+    color = colors.italic,
     callback = function()
       self:_applyCurrentSelection("italic")
     end,
@@ -167,6 +191,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "code",
     text = "</>",
+    color = colors.code,
     callback = function()
       self:_applyCurrentSelection("code")
     end,
@@ -176,6 +201,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "h1",
     text = "H1",
+    color = colors.heading,
     callback = function()
       self:_applyCurrentSelection("heading", 1)
     end,
@@ -184,6 +210,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "h2",
     text = "H2",
+    color = colors.heading,
     callback = function()
       self:_applyCurrentSelection("heading", 2)
     end,
@@ -192,6 +219,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "h3",
     text = "H3",
+    color = colors.heading,
     callback = function()
       self:_applyCurrentSelection("heading", 3)
     end,
@@ -201,6 +229,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "bullet_list",
     text = "•-",
+    color = colors.list,
     callback = function()
       self:_applyCurrentSelection("list", false)
     end,
@@ -210,6 +239,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "numbered_list",
     text = "1.",
+    color = colors.list,
     callback = function()
       self:_applyCurrentSelection("list", true)
     end,
@@ -219,6 +249,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "link",
     text = "[L]",
+    color = colors.link,
     callback = function()
       self:_insertLink()
     end,
@@ -228,6 +259,7 @@ function MarkdownEditor:_buildToolbar()
   table.insert(self.toolbar_buttons, {
     id = "wiki_link",
     text = "[[]]",
+    color = colors.wiki_link,
     callback = function()
       self:_applyCurrentSelection("wiki_link")
     end,
@@ -245,6 +277,7 @@ function MarkdownEditor:_buildToolbar()
       font_size = 16,
       bordersize = 1,
       radius = 3,
+      background = btn_spec.color,
     }
     table.insert(self.toolbar_button_widgets, btn)
   end
@@ -278,6 +311,7 @@ function MarkdownEditor:_buildActionButtons()
     font_size = 18,
     bordersize = 2,
     radius = 5,
+    background = colors.save,
   }
 
   self.new_note_button = Button:new{
@@ -291,6 +325,7 @@ function MarkdownEditor:_buildActionButtons()
     font_size = 18,
     bordersize = 2,
     radius = 5,
+    background = colors.save_new,
   }
 
   self.cancel_button = Button:new{
@@ -304,6 +339,7 @@ function MarkdownEditor:_buildActionButtons()
     font_size = 18,
     bordersize = 2,
     radius = 5,
+    background = colors.delete,
   }
 end
 

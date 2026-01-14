@@ -168,9 +168,23 @@ describe("markdown_editor", function()
     -- Add Blitbuffer mock
     local Blitbuffer = {
       colorW = function() return {} end,
+      ColorRGB = function(r, g, b)
+        return {r = r, g = g, b = b, type = "color"}
+      end,
+      COLOR_WHITE = 0xFFFFFF,
+      COLOR_BLACK = 0x000000,
+      COLOR_LIGHT_GRAY = 0xC0C0C0,
+      COLOR_DARK_GRAY = 0x404040,
     }
     package.loaded["ffi/blitbuffer"] = Blitbuffer
     _G.Blitbuffer = Blitbuffer
+
+    -- Add Device mock
+    local Device = {
+      hasColorScreen = function() return false end,  -- Default to E-ink
+    }
+    package.loaded["device"] = Device
+    _G.Device = Device
 
     -- UIManager needs more methods
     mock_ui_manager.setDirty = function(...) end
@@ -219,6 +233,8 @@ describe("markdown_editor", function()
     package.loaded["markdown_formatter"] = nil
     package.loaded["note_manager"] = nil
     package.loaded["gettext"] = nil
+    package.loaded["ffi/blitbuffer"] = nil
+    package.loaded["device"] = nil
     package.loaded["ui/widget/widget"] = nil
     package.loaded["ui/widget/inputcontainer"] = nil
     package.loaded["ui/widget/textboxwidget"] = nil
