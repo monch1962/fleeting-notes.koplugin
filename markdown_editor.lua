@@ -120,7 +120,7 @@ function MarkdownEditor:_doAutoSave()
   self.auto_save_pending = false
 
   -- Get current content
-  local current_content = self.editor:getText()
+  local current_content = self.editor.text or ""
 
   -- Don't save if empty
   if not note_manager.validate_content(current_content) then
@@ -410,7 +410,7 @@ end
 -- @param ...: Additional parameters (e.g., heading level)
 function MarkdownEditor:_applyCurrentSelection(format_type, ...)
   -- Get current text
-  local current_text = self.editor:getText()
+  local current_text = self.editor.text or ""
 
   -- Get selection (if any) - TextBoxWidget may not expose this directly
   -- For now, we'll apply to the entire text or insert at cursor position
@@ -442,11 +442,11 @@ end
 function MarkdownEditor:_insertLink()
   -- In a full implementation, this would show input dialogs
   -- For now, insert a template link
-  local current_text = self.editor:getText()
+  local current_text = self.editor.text or ""
   local link_template = "[link text](url)"
 
   self.editor:setText(current_text .. " " .. link_template)
-  self.content = self.editor:getText()
+  self.content = self.editor.text or ""
 
   -- Trigger auto-save after inserting link
   self:_doAutoSave()
@@ -465,7 +465,7 @@ end
 
 -- Done: save final state and close (file already auto-saved)
 function MarkdownEditor:_doneAndClose()
-  local content = self.editor:getText()
+  local content = self.editor.text or ""
 
   -- If file was created, it's already saved
   if self.auto_save_created and self.auto_save_filename then
@@ -521,7 +521,7 @@ end
 
 -- Save & New: close current note and immediately create a new one
 function MarkdownEditor:_saveAndNewNote()
-  local content = self.editor:getText()
+  local content = self.editor.text or ""
 
   -- If file was created, it's already saved
   if self.auto_save_created and self.auto_save_filename then
@@ -631,7 +631,7 @@ end
 -- Public method to get current note info
 -- @return table|nil: Note object or nil if no content
 function MarkdownEditor:get_note()
-  local content = self.editor:getText()
+  local content = self.editor.text or ""
 
   if not note_manager.validate_content(content) then
     return nil
@@ -658,7 +658,7 @@ end
 function MarkdownEditor:onCloseWidget()
   -- Final auto-save before closing (if not already handled)
   if self.auto_save_created and self.auto_save_filename then
-    local content = self.editor:getText()
+    local content = self.editor.text or ""
     if note_manager.validate_content(content) then
       file_storage.save_note(self.auto_save_filename, content)
     end
