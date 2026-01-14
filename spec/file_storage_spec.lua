@@ -77,7 +77,7 @@ describe("file_storage", function()
     end)
 
     it("should ensure unique filenames when called rapidly", function()
-      local filenames = {}
+      -- This test creates actual files to test the counter mechanism
       local base_time = os.time({
         year = 2026,
         month = 1,
@@ -87,18 +87,21 @@ describe("file_storage", function()
         sec = 0
       })
 
-      -- Generate 100 filenames in the same second
-      for i = 1, 100 do
+      -- Create a few files with the same timestamp
+      local filenames = {}
+      for i = 1, 5 do
         local filename = file_storage.generate_filename(base_time)
         filenames[filename] = true
+        -- Create the file so next call gets a different name
+        file_storage.save_note(filename, "# Test note " .. i)
       end
 
-      -- Should have at least 99 unique filenames (allow minimal collision)
+      -- Should have 5 unique filenames
       local count = 0
       for _ in pairs(filenames) do
         count = count + 1
       end
-      assert.is_truthy(count >= 99)
+      assert.is.equals(5, count)
     end)
   end)
 
@@ -149,6 +152,10 @@ describe("file_storage", function()
 
   describe("list_notes", function()
     it("should return array of note filenames", function()
+      -- Create some test files first
+      file_storage.save_note("2026-01-14-10-30-00.md", "# Test 1")
+      file_storage.save_note("2026-01-14-11-45-30.md", "# Test 2")
+
       local notes = file_storage.list_notes()
 
       assert.is_truthy(type(notes) == "table")

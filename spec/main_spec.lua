@@ -21,6 +21,21 @@ describe("Fleeting Notes Plugin", function()
       end
     }
 
+    -- Mock WidgetContainer
+    local WidgetContainer = {}
+    function WidgetContainer:extend(props)
+      local new_class = props or {}
+      new_class.__index = new_class
+      setmetatable(new_class, {
+        __index = function(t, k)
+          -- Don't return functions for undefined fields
+          return nil
+        end
+      })
+      return new_class
+    end
+    package.loaded["ui/widget/container/widgetcontainer"] = WidgetContainer
+
     package.loaded["markdown_editor"] = function()
       return {
         _buildToolbar = function() end,
@@ -36,6 +51,11 @@ describe("Fleeting Notes Plugin", function()
       ensure_notes_dir = function() return true end,
     }
 
+    package.loaded["file_storage"] = {
+      set_notes_dir = function() return true end,
+      ensure_notes_dir = function() return true end,
+    }
+
     -- Load the plugin
     Plugin = require("main")
   end)
@@ -44,9 +64,11 @@ describe("Fleeting Notes Plugin", function()
     package.loaded["main"] = nil
     package.loaded["markdown_editor"] = nil
     package.loaded["note_manager"] = nil
+    package.loaded["file_storage"] = nil
     package.loaded["gettext"] = nil
     package.loaded["ui/uimanager"] = nil
     package.loaded["datastorage"] = nil
+    package.loaded["ui/widget/container/widgetcontainer"] = nil
   end)
 
   describe("plugin table", function()
@@ -54,14 +76,14 @@ describe("Fleeting Notes Plugin", function()
       assert.is.falsy(Plugin.disabled)
     end)
 
-    it("should have menu_text field", function()
-      assert.is.truthy(Plugin.menu_text)
-      assert.is.truthy(type(Plugin.menu_text) == "string")
+    it("should have name field", function()
+      assert.is.truthy(Plugin.name)
+      assert.is.truthy(type(Plugin.name) == "string")
     end)
 
-    it("should have meaningful menu text", function()
-      local text = Plugin.menu_text:lower()
-      assert.is.truthy(text:match("note") or text:match("fleeting"))
+    it("should have meaningful name", function()
+      local name = Plugin.name:lower()
+      assert.is.truthy(name:match("note") or name:match("fleeting"))
     end)
   end)
 
@@ -72,8 +94,22 @@ describe("Fleeting Notes Plugin", function()
     end)
 
     it("should initialize without errors", function()
-      local ok, err = pcall(Plugin.init, Plugin)
-      assert.is.truthy(ok)
+      -- Create a plugin instance with required ui field (like KOReader does)
+      local test_plugin = {
+        name = "fleeting_notes",
+        is_doc_only = false,
+        disabled = false,
+        ui = {
+          menu = {
+            registerToMainMenu = function() end
+          }
+        },
+        init = Plugin.init,
+      }
+      setmetatable(test_plugin, {__index = Plugin})
+
+      local ok, err = pcall(test_plugin.init, test_plugin)
+      assert.is_truthy(ok)
     end)
   end)
 
@@ -93,11 +129,17 @@ describe("Fleeting Notes Plugin", function()
   describe("notes directory", function()
     it("should set up notes directory on init", function()
       local test_plugin = {
+        name = "fleeting_notes",
+        is_doc_only = false,
         disabled = false,
-        menu_text = "Test Plugin",
+        ui = {
+          menu = {
+            registerToMainMenu = function() end
+          }
+        },
         init = Plugin.init,
-        start = Plugin.start,
       }
+      setmetatable(test_plugin, {__index = Plugin})
 
       test_plugin:init()
       assert.is.truthy(test_plugin.notes_dir)
@@ -108,9 +150,10 @@ describe("Fleeting Notes Plugin", function()
     it("should be compatible with KOReader plugin interface", function()
       -- KOReader requires these fields/methods
       assert.is.falsy(Plugin.disabled)  -- Should be false by default
-      assert.is.truthy(Plugin.menu_text)
+      assert.is.truthy(Plugin.name)
       assert.is.truthy(type(Plugin.init) == "function")
       assert.is.truthy(type(Plugin.start) == "function")
+      assert.is.truthy(type(Plugin.addToMainMenu) == "function")
     end)
   end)
 end)
