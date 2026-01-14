@@ -83,7 +83,7 @@ end
 function Plugin:addToMainMenu(menu_items)
   menu_items.fleeting_notes = {
     text = _("Fleeting Notes"),
-    sorting_hint = "tools",
+    sorting_hint = "more_tools",
     keep_menu_open = true,
     sub_item_table = {
       {
