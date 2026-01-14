@@ -169,8 +169,8 @@ describe("markdown_formatter", function()
 
     it("should not unwrap if markers are mismatched", function()
       local result = markdown_formatter.toggle_wiki_link("[[My Note]")
-      -- Should wrap it to make it complete
-      assert.is.equals("[[[My Note]]]", result)
+      -- Should add 1 bracket to each side (making it 3 leading, 2 trailing)
+      assert.is.equals("[[[My Note]]", result)
     end)
   end)
 

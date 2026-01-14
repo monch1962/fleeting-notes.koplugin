@@ -56,31 +56,62 @@ end
 -- @param text string: Text to toggle
 -- @return string: Text with bold toggled
 function markdown_formatter.toggle_bold(text)
-  -- Check if already wrapped in bold
-  local trimmed = text:match("^%s*(.-)%s*$")
+  -- Handle empty string
+  if not text or text == "" then
+    return ""
+  end
 
-  -- Check for **text** pattern
-  if trimmed:match("^%*%*.%*%*$") or trimmed:match("^%*%*.-%*%*$") then
-    -- Unwrap: remove outer ** markers
-    local unwrapped = trimmed:match("^%*%*(.-)%*%*$")
-    if unwrapped then
-      return unwrapped
+  -- Count leading asterisks
+  local leading_stars = 0
+  for i = 1, #text do
+    if text:sub(i, i) == "*" then
+      leading_stars = leading_stars + 1
+    else
+      break
     end
   end
 
-  -- Not wrapped, wrap it
-  return markdown_formatter.wrap_bold(text)
+  -- Count trailing asterisks
+  local trailing_stars = 0
+  for i = #text, 1, -1 do
+    if text:sub(i, i) == "*" then
+      trailing_stars = trailing_stars + 1
+    else
+      break
+    end
+  end
+
+  -- If we have **text** (exactly 2+ on both sides), unwrap by removing exactly 2 from each side
+  if leading_stars >= 2 and trailing_stars >= 2 then
+    -- Extract the text after removing all leading and trailing asterisks
+    local inner = text:sub(leading_stars + 1, #text - trailing_stars)
+    -- Add back (leading_stars - 2) asterisks on each side
+    return string.rep("*", leading_stars - 2) .. inner .. string.rep("*", trailing_stars - 2)
+  end
+
+  -- If we have any asterisks but mismatched, add 1 to each side (keeping existing)
+  if leading_stars > 0 or trailing_stars > 0 then
+    return "*" .. text .. "*"
+  end
+
+  -- Not wrapped, wrap it with **
+  return "**" .. text .. "**"
 end
 
 --- Toggle italic formatting (wrap or unwrap)
 -- @param text string: Text to toggle
 -- @return string: Text with italic toggled
 function markdown_formatter.toggle_italic(text)
+  -- Handle empty string
+  if not text or text == "" then
+    return ""
+  end
+
   -- Check if already wrapped in italic
   local trimmed = text:match("^%s*(.-)%s*$")
 
-  -- Check for *text* pattern
-  if trimmed:match("^%*.%*$") or trimmed:match("^%*.-%*$") then
+  -- Check for *text* pattern (but not **text**)
+  if trimmed:match("^%*.+%*$") and not trimmed:match("^%*%*.+") then
     -- Unwrap: remove outer * markers
     local unwrapped = trimmed:match("^%*(.-)%*$")
     if unwrapped then
@@ -96,11 +127,16 @@ end
 -- @param text string: Text to toggle
 -- @return string: Text with code toggled
 function markdown_formatter.toggle_code(text)
+  -- Handle empty string
+  if not text or text == "" then
+    return ""
+  end
+
   -- Check if already wrapped in code
   local trimmed = text:match("^%s*(.-)%s*$")
 
   -- Check for `text` pattern
-  if trimmed:match("^`.`$") or trimmed:match("^`.-%`$") then
+  if trimmed:match("^`.+`$") then
     -- Unwrap: remove outer ` markers
     local unwrapped = trimmed:match("^`(.-)`$")
     if unwrapped then
@@ -123,20 +159,39 @@ end
 -- @param text string: Text to toggle
 -- @return string: Text with wiki link toggled
 function markdown_formatter.toggle_wiki_link(text)
-  -- Check if already wrapped in wiki link
-  local trimmed = text:match("^%s*(.-)%s*$")
-
-  -- Check for [[text]] pattern
-  if trimmed:match("^%[%[%[.-%]%]%$") then
-    -- Unwrap: remove outer [[ and ]]
-    local unwrapped = trimmed:match("^%[%[%[(.-)%]%]%$")
-    if unwrapped then
-      return unwrapped
+  -- Count leading brackets
+  local leading_brackets = 0
+  for i = 1, #text do
+    if text:sub(i, i) == "[" then
+      leading_brackets = leading_brackets + 1
+    else
+      break
     end
   end
 
-  -- Not wrapped, wrap it
-  return markdown_formatter.wrap_wiki_link(text)
+  -- Count trailing brackets
+  local trailing_brackets = 0
+  for i = #text, 1, -1 do
+    if text:sub(i, i) == "]" then
+      trailing_brackets = trailing_brackets + 1
+    else
+      break
+    end
+  end
+
+  -- If we have [[text]] (exactly 2+ on both sides), unwrap by removing exactly 2 from each side
+  if leading_brackets >= 2 and trailing_brackets >= 2 then
+    local inner = text:sub(leading_brackets + 1, #text - trailing_brackets)
+    return string.rep("[", leading_brackets - 2) .. inner .. string.rep("]", trailing_brackets - 2)
+  end
+
+  -- If we have any brackets but mismatched or <2, add 1 to each side
+  if leading_brackets > 0 or trailing_brackets > 0 then
+    return "[" .. text .. "]"
+  end
+
+  -- Not wrapped, wrap it with [[
+  return "[[" .. text .. "]]"
 end
 
 --- Apply formatting to selected text in a larger text

@@ -10,23 +10,44 @@ describe("note_manager", function()
     -- Mock file_storage
     file_storage = {
       set_notes_dir = function() return true end,
+      get_notes_dir = function() return test_notes_dir end,
       ensure_notes_dir = function() return true end,
       generate_filename = function(ts)
         if ts then
-          return os.date("!%Y-%m-%d-%H-%M-%S", ts) .. ".md"
+          return os.date("%Y-%m-%d-%H-%M-%S", ts) .. ".md"
         end
-        return os.date("!%Y-%m-%d-%H-%M-%S") .. ".md"
+        return os.date("%Y-%m-%d-%H-%M-%S") .. ".md"
       end,
       save_note = function(filename, content) return true end,
-      load_note = function(filename) return "# Loaded\nContent" end,
+      load_note = function(filename)
+        -- Return nil for non-existent files
+        if filename == "nonexistent.md" or filename == "" then
+          return nil
+        end
+        return "# Loaded\nContent"
+      end,
       list_notes = function()
         return {"2026-01-14-10-30-00.md", "2026-01-14-11-45-30.md"}
       end,
-      delete_note = function(filename) return true end,
+      delete_note = function(filename)
+        -- Return false for non-existent files
+        if filename == "nonexistent.md" or filename == "" then
+          return false
+        end
+        return true
+      end,
     }
 
     package.loaded["file_storage"] = file_storage
 
+    note_manager = require("note_manager")
+    note_manager.set_notes_dir(test_notes_dir)
+  end)
+
+  before_each(function()
+    -- Reset module cache to reload file_storage mock
+    package.loaded["file_storage"] = nil
+    package.loaded["file_storage"] = file_storage
     note_manager = require("note_manager")
     note_manager.set_notes_dir(test_notes_dir)
   end)

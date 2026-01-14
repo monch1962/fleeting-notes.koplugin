@@ -4,21 +4,17 @@
 
 local DataStorage = require("datastorage")
 local UIManager = require("ui/uimanager")
+local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
 
 -- Load local modules
 local MarkdownEditor = require("markdown_editor")
 local note_manager = require("note_manager")
 
-local Plugin = {
-  -- Plugin is enabled by default
+local Plugin = WidgetContainer:extend{
+  name = "fleeting_notes",
+  is_doc_only = false,
   disabled = false,
-
-  -- Menu item text
-  menu_text = _("Fleeting Notes"),
-
-  -- Check if plugin should be shown in menu
-  is_always_enabled = true,
 }
 
 --- Initialize the plugin
@@ -28,9 +24,13 @@ function Plugin:init()
   local base_dir = DataStorage:getDataDir()
   self.notes_dir = base_dir .. "/fleeting-notes"
 
-  -- Ensure directory exists
-  note_manager.set_notes_dir(self.notes_dir)
-  note_manager.ensure_notes_dir(self.notes_dir)
+  -- Ensure directory exists and set it
+  local file_storage = require("file_storage")
+  file_storage.set_notes_dir(self.notes_dir)
+  file_storage.ensure_notes_dir()
+
+  -- Register plugin in the main menu
+  self.ui.menu:registerToMainMenu(self)
 end
 
 --- Create and show a new note editor
@@ -72,6 +72,18 @@ function Plugin:show_notification(message)
     text = message,
     timeout = 2,
   })
+end
+
+--- Add plugin to the main menu
+-- @param menu_items table: Menu items table to populate
+function Plugin:addToMainMenu(menu_items)
+  menu_items.fleeting_notes = {
+    text = _("Fleeting Notes"),
+    sorting_hint = "more_tools",
+    callback = function()
+      self:start()
+    end,
+  }
 end
 
 return Plugin

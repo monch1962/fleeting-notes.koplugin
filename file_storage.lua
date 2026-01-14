@@ -10,11 +10,14 @@ local filename_counter = 0  -- For handling rapid creation
 
 -- Helper: Try to load lfs (LuaFileSystem)
 -- In KOReader, use libs/libkoreader-lfs.lua
-local lfs = pcall(require, "lfs")
-if not lfs then
+local ok, lfs_module = pcall(require, "lfs")
+local lfs
+if ok then
+  lfs = lfs_module
+else
   -- Try KOReader's lfs location
-  local ok, koreader_lfs = pcall(require, "libs/libkoreader-lfs")
-  if ok then
+  local ok2, koreader_lfs = pcall(require, "libs/libkoreader-lfs")
+  if ok2 then
     lfs = koreader_lfs
   else
     error("Required library 'lfs' not found. Please install LuaFileSystem.")
@@ -71,8 +74,8 @@ end
 function file_storage.generate_filename(timestamp)
   local ts = timestamp or os.time()
 
-  -- Format: YYYY-MM-DD-HH-MM-SS
-  local date_str = os.date("!%Y-%m-%d-%H-%M-%S", ts)
+  -- Format: YYYY-MM-DD-HH-MM-SS (24-hour clock, local time)
+  local date_str = os.date("%Y-%m-%d-%H-%M-%S", ts)
 
   -- Handle rapid creation in the same second
   -- Add a counter suffix if multiple files in same second

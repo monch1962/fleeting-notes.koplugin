@@ -7,24 +7,17 @@ local note_manager = {}
 -- Load file_storage dependency
 local file_storage = require("file_storage")
 
--- Module state
-local notes_dir = file_storage.get_notes_dir()
-
 --- Set the notes directory path
 -- @param dir string: Path to notes directory
 -- @return boolean: Success status
 function note_manager.set_notes_dir(dir)
-  local result = file_storage.set_notes_dir(dir)
-  if result then
-    notes_dir = dir
-  end
-  return result
+  return file_storage.set_notes_dir(dir)
 end
 
 --- Get the current notes directory path
 -- @return string: Path to notes directory
 function note_manager.get_notes_dir()
-  return notes_dir
+  return file_storage.get_notes_dir()
 end
 
 --- Validate note content

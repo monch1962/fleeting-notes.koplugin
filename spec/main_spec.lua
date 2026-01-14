@@ -6,6 +6,10 @@ describe("Fleeting Notes Plugin", function()
 
   setup(function()
     -- Mock KOReader dependencies
+    package.loaded["gettext"] = function(text)
+      return text  -- Identity function for testing
+    end
+
     package.loaded["ui/uimanager"] = {
       show = function() end,
       close = function() end,
@@ -40,6 +44,7 @@ describe("Fleeting Notes Plugin", function()
     package.loaded["main"] = nil
     package.loaded["markdown_editor"] = nil
     package.loaded["note_manager"] = nil
+    package.loaded["gettext"] = nil
     package.loaded["ui/uimanager"] = nil
     package.loaded["datastorage"] = nil
   end)

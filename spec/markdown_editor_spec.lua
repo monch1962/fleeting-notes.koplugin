@@ -7,34 +7,176 @@ describe("markdown_editor", function()
 
   setup(function()
     -- Mock KOReader UI components
-    package.loaded["ui/widget/widget"] = {
+    package.loaded["gettext"] = function(text) return text end
+
+    -- Base Widget class with :new method
+    local Widget = {
+      new = function(cls, args)
+        local obj = {}
+        -- Copy all class fields to the instance, including from metatable chain
+        local current = cls
+        while current do
+          for k, v in pairs(current) do
+            if type(v) ~= "function" and obj[k] == nil then
+              obj[k] = v
+            end
+          end
+          -- Move up the metatable chain
+          local mt = getmetatable(current)
+          current = mt and mt.__index
+        end
+        -- Then override with provided args
+        if args then
+          for k, v in pairs(args) do
+            obj[k] = v
+          end
+        end
+        setmetatable(obj, {__index = cls})
+        if obj.init then
+          obj:init()
+        end
+        return obj
+      end,
       extend = function(cls, methods)
-        return setmetatable(methods, {__index = cls})
+        local new_cls = methods or {}
+        new_cls.__index = new_cls
+        setmetatable(new_cls, {__index = cls})
+        return new_cls
       end
     }
 
-    package.loaded["ui/widget/inputcontainer"] = {
-      extend = function(cls, methods)
-        return setmetatable(methods, {__index = cls})
+    package.loaded["ui/widget/widget"] = Widget
+
+    -- InputContainer extends Widget
+    local InputContainer = Widget:extend{
+      key_events = {},  -- InputContainer has key_events by default
+      new = function(cls, args)
+        local obj = {}
+        -- Copy all class fields to the instance, including from metatable chain
+        local current = cls
+        while current do
+          for k, v in pairs(current) do
+            if type(v) ~= "function" and obj[k] == nil then
+              obj[k] = v
+            end
+          end
+          -- Move up the metatable chain
+          local mt = getmetatable(current)
+          current = mt and mt.__index
+        end
+        -- Then override with provided args
+        if args then
+          for k, v in pairs(args) do
+            obj[k] = v
+          end
+        end
+        setmetatable(obj, {__index = cls})
+        if obj.init then
+          obj:init()
+        end
+        return obj
       end
     }
 
-    package.loaded["ui/widget/textboxwidget"] = function()
-      return {}
+    package.loaded["ui/widget/inputcontainer"] = InputContainer
+
+    -- Helper to create widget class mocks
+    local function createWidgetMock()
+      local WidgetClass = {
+        new = function(cls, args)
+          local obj = {}
+          -- Copy all class fields to the instance, including from metatable chain
+          local current = cls
+          while current do
+            for k, v in pairs(current) do
+              if type(v) ~= "function" and obj[k] == nil then
+                obj[k] = v
+              end
+            end
+            -- Move up the metatable chain
+            local mt = getmetatable(current)
+            current = mt and mt.__index
+          end
+          -- Then override with provided args
+          if args then
+            for k, v in pairs(args) do
+              obj[k] = v
+            end
+          end
+          setmetatable(obj, {__index = cls})
+          return obj
+        end,
+        -- Add common widget methods
+        getSize = function(self) return {w = self.width or 100, h = self.height or 40} end,
+        paintTo = function(self, ...) end,
+        setupDOM = function(self, ...) end,
+        getOffset = function(self) return {x = 0, y = 0} end,
+      }
+      return WidgetClass
     end
 
-    package.loaded["ui/widget/button"] = function()
-      return {}
-    end
+    -- TextBoxWidget needs special methods
+    local TextBoxWidget = createWidgetMock()
+    TextBoxWidget.getText = function(self) return self.text or "" end
+    TextBoxWidget.setText = function(self, text) self.text = text end
+    package.loaded["ui/widget/textboxwidget"] = TextBoxWidget
 
-    package.loaded["ui/widget/horizontalgroup"] = function()
-      return {}
-    end
+    package.loaded["ui/widget/button"] = createWidgetMock()
+    package.loaded["ui/widget/horizontalgroup"] = createWidgetMock()
+    package.loaded["ui/widget/verticalgroup"] = createWidgetMock()
+    package.loaded["ui/widget/horizontalspan"] = createWidgetMock()
+    package.loaded["ui/widget/verticalspan"] = createWidgetMock()
+    package.loaded["ui/widget/centercontainer"] = createWidgetMock()
+    package.loaded["ui/widget/framecontainer"] = createWidgetMock()
+    package.loaded["ui/widget/infomessage"] = createWidgetMock()
+    package.loaded["ui/widget/confirmbox"] = createWidgetMock()
 
-    package.loaded["ui/widget/verticalgroup"] = function()
-      return {}
-    end
+    package.loaded["ui/geom"] = {
+      new = function(cls, tbl)
+        local obj = tbl or {}
+        setmetatable(obj, {__index = cls})
+        return obj
+      end
+    }
 
+    package.loaded["ui/font"] = {
+      getFace = function(name) return {} end
+    }
+
+    -- Add Screen mock
+    package.loaded["ui/device"] = {
+      screen = {
+        getWidth = function() return 600 end,
+        getHeight = function() return 800 end,
+      }
+    }
+
+    package.loaded["ui/screen"] = {
+      getWidth = function() return 600 end,
+      getHeight = function() return 800 end,
+    }
+
+    local Screen = {
+      getWidth = function() return 600 end,
+      getHeight = function() return 800 end,
+      getSize = function() return {w = 600, h = 800} end,
+    }
+
+    package.loaded["ui/screen"] = Screen
+    _G.Screen = Screen
+
+    -- Add Blitbuffer mock
+    local Blitbuffer = {
+      colorW = function() return {} end,
+    }
+    package.loaded["ffi/blitbuffer"] = Blitbuffer
+    _G.Blitbuffer = Blitbuffer
+
+    -- UIManager needs more methods
+    mock_ui_manager.setDirty = function(...) end
+    mock_ui_manager.nextTick = function(cb) cb() end
+    mock_ui_manager.close = function(...) end
+    mock_ui_manager.show = function(...) end
     package.loaded["ui/uimanager"] = mock_ui_manager
 
     package.loaded["markdown_formatter"] = {
@@ -44,11 +186,28 @@ describe("markdown_editor", function()
       insert_heading = function(l) return string.rep("#", l) .. " " end,
       insert_list = function(o) return o and "1. " or "- " end,
       insert_link = function(t, u) return "[" .. t .. "](" .. u .. ")" end,
+      apply_formatting = function(text, format_type, start_pos, end_pos, ...)
+        if format_type == "bold" then return "**" .. text .. "**" end
+        if format_type == "italic" then return "*" .. text .. "*" end
+        if format_type == "code" then return "`" .. text .. "`" end
+        if format_type == "heading" then
+          local level = select(1, ...) or 1
+          return string.rep("#", level) .. " " .. text
+        end
+        if format_type == "list" then
+          local numbered = select(1, ...)
+          return numbered and "1. " or "- " .. text
+        end
+        return text
+      end,
     }
 
     package.loaded["note_manager"] = {
       create_note = function(content)
         return {filename = "test.md", content = content, created_at = os.time()}
+      end,
+      validate_content = function(content)
+        return content and content ~= "" and content:match("%S")
       end,
     }
 
@@ -59,35 +218,44 @@ describe("markdown_editor", function()
     package.loaded["markdown_editor"] = nil
     package.loaded["markdown_formatter"] = nil
     package.loaded["note_manager"] = nil
+    package.loaded["gettext"] = nil
     package.loaded["ui/widget/widget"] = nil
     package.loaded["ui/widget/inputcontainer"] = nil
     package.loaded["ui/widget/textboxwidget"] = nil
     package.loaded["ui/widget/button"] = nil
     package.loaded["ui/widget/horizontalgroup"] = nil
     package.loaded["ui/widget/verticalgroup"] = nil
+    package.loaded["ui/widget/horizontalspan"] = nil
+    package.loaded["ui/widget/verticalspan"] = nil
+    package.loaded["ui/widget/centercontainer"] = nil
+    package.loaded["ui/widget/framecontainer"] = nil
+    package.loaded["ui/widget/infomessage"] = nil
+    package.loaded["ui/widget/confirmbox"] = nil
+    package.loaded["ui/geom"] = nil
+    package.loaded["ui/font"] = nil
     package.loaded["ui/uimanager"] = nil
   end)
 
   describe("create", function()
     it("should create a new editor instance", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       assert.is_truthy(editor)
     end)
 
     it("should accept initial content", function()
-      local editor = markdown_editor:create("# Initial Content")
+      local editor = markdown_editor:new{content = "# Initial Content"}
       assert.is_truthy(editor)
       assert.is.equals("# Initial Content", editor.content)
     end)
 
     it("should have toolbar buttons", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       assert.is_truthy(editor.toolbar_buttons)
       assert.is.truthy(type(editor.toolbar_buttons) == "table")
     end)
 
     it("should have save and cancel buttons", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       assert.is.truthy(editor.save_button)
       assert.is_truthy(editor.cancel_button)
     end)
@@ -95,7 +263,7 @@ describe("markdown_editor", function()
 
   describe("toolbar buttons", function()
     it("should include bold button", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       local has_bold = false
       for _, btn in ipairs(editor.toolbar_buttons) do
         if btn.id == "bold" then
@@ -107,7 +275,7 @@ describe("markdown_editor", function()
     end)
 
     it("should include italic button", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       local has_italic = false
       for _, btn in ipairs(editor.toolbar_buttons) do
         if btn.id == "italic" then
@@ -119,7 +287,7 @@ describe("markdown_editor", function()
     end)
 
     it("should include code button", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       local has_code = false
       for _, btn in ipairs(editor.toolbar_buttons) do
         if btn.id == "code" then
@@ -131,7 +299,7 @@ describe("markdown_editor", function()
     end)
 
     it("should include heading buttons", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       local h1_count, h2_count, h3_count = 0, 0, 0
       for _, btn in ipairs(editor.toolbar_buttons) do
         if btn.id == "h1" then h1_count = h1_count + 1 end
@@ -144,7 +312,7 @@ describe("markdown_editor", function()
     end)
 
     it("should include list buttons", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       local has_bullet, has_numbered = false, false
       for _, btn in ipairs(editor.toolbar_buttons) do
         if btn.id == "bullet_list" then has_bullet = true end
@@ -155,7 +323,7 @@ describe("markdown_editor", function()
     end)
 
     it("should include link button", function()
-      local editor = markdown_editor:create()
+      local editor = markdown_editor:new{}
       local has_link = false
       for _, btn in ipairs(editor.toolbar_buttons) do
         if btn.id == "link" then
@@ -169,31 +337,31 @@ describe("markdown_editor", function()
 
   describe("apply_formatting", function()
     it("should apply bold to selected text", function()
-      local editor = markdown_editor:create("hello world")
+      local editor = markdown_editor:new{content = "hello world"}
       editor:apply_formatting("bold", 1, 5)
       assert.is.equals("**hello** world", editor.content)
     end)
 
     it("should apply italic to selected text", function()
-      local editor = markdown_editor:create("hello world")
+      local editor = markdown_editor:new{content = "hello world"}
       editor:apply_formatting("italic", 1, 5)
       assert.is.equals("*hello* world", editor.content)
     end)
 
     it("should apply code to selected text", function()
-      local editor = markdown_editor:create("hello world")
+      local editor = markdown_editor:new{content = "hello world"}
       editor:apply_formatting("code", 1, 5)
       assert.is.equals("`hello` world", editor.content)
     end)
 
     it("should insert heading at cursor", function()
-      local editor = markdown_editor:create("hello")
+      local editor = markdown_editor:new{content = "hello"}
       editor:apply_formatting("heading", 1, 1, 2)
       assert.is.equals("## hello", editor.content)
     end)
 
     it("should insert list at cursor", function()
-      local editor = markdown_editor:create("item")
+      local editor = markdown_editor:new{content = "item"}
       editor:apply_formatting("list", 1, 1, false)
       assert.is.equals("- item", editor.content)
     end)
@@ -201,14 +369,14 @@ describe("markdown_editor", function()
 
   describe("save_note", function()
     it("should save the current content", function()
-      local editor = markdown_editor:create("# Test Note")
+      local editor = markdown_editor:new{content = "# Test Note"}
       local result = editor:save_note()
       assert.is.truthy(result)
       assert.is_truthy(result.filename)
     end)
 
     it("should not save empty content", function()
-      local editor = markdown_editor:create("")
+      local editor = markdown_editor:new{content = ""}
       local result = editor:save_note()
       assert.is_nil(result)
     end)
@@ -216,13 +384,13 @@ describe("markdown_editor", function()
 
   describe("close", function()
     it("should close without saving when cancelled", function()
-      local editor = markdown_editor:create("test")
+      local editor = markdown_editor:new{content = "test"}
       local closed = editor:close(false)
       assert.is.truthy(closed)
     end)
 
     it("should save and close when confirmed", function()
-      local editor = markdown_editor:create("test")
+      local editor = markdown_editor:new{content = "test"}
       local closed, saved = editor:close(true)
       assert.is.truthy(closed)
       assert.is_truthy(saved)
@@ -231,7 +399,7 @@ describe("markdown_editor", function()
 
   describe("on_close_widget", function()
     it("should be callable", function()
-      local editor = markdown_editor:create("test")
+      local editor = markdown_editor:new{content = "test"}
       editor:onCloseWidget()
       -- Should not error
       assert.is_truthy(true)

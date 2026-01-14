@@ -8,35 +8,19 @@ describe("file_storage", function()
 
   -- Setup and teardown
   setup(function()
-    -- Mock lfs (LuaFileSystem) for testing
-    package.loaded["lfs"] = {
-      mkdir = function(dir)
-        -- Mock mkdir - simulate success
-        return true
-      end,
-      attributes = function(path)
-        if path == test_notes_dir then
-          return { mode = "directory" }
-        end
-        return nil
-      end,
-      dir = function(path)
-        -- Mock dir - return list of files
-        local files = {}
-        if path == test_notes_dir then
-          return coroutine.wrap(function()
-            coroutine.yield(".")
-            coroutine.yield("..")
-            coroutine.yield("2026-01-14-10-30-00.md")
-            coroutine.yield("2026-01-14-11-45-30.md")
-          end)
-        end
-        return nil
-      end,
-      currentdir = function()
-        return test_notes_dir
-      end
-    }
+    -- For file I/O tests, we need to use real lfs and create actual test files
+    -- First unload any mock
+    package.loaded["lfs"] = nil
+
+    -- Import real lfs
+    local real_lfs = require("lfs")
+
+    -- Create test directory
+    if real_lfs.attributes(test_notes_dir) then
+      -- Directory exists, remove it first
+      os.execute("rm -rf " .. test_notes_dir)
+    end
+    real_lfs.mkdir(test_notes_dir)
 
     -- Set up test environment
     file_storage = require("file_storage")
