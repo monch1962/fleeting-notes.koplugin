@@ -130,12 +130,13 @@ function MarkdownEditor:autoDismissCheck()
     -- If idle for longer than the delay, dismiss keyboard
     if idle_time >= self.auto_dismiss_delay then
       self.editor:onCloseKeyboard()
-      return  -- Don't reschedule after dismissing
+      -- Reset timer so we don't immediately try again
+      self.last_typing_time = os.time()
     end
   end
 
-  -- Reschedule check in 1 second
-  UIManager:scheduleIn(1, function()
+  -- Always reschedule check in 1 second (so we can detect when keyboard reappears)
+  self.auto_dismiss_check_job = UIManager:scheduleIn(1, function()
     self:autoDismissCheck()
   end)
 end
