@@ -435,7 +435,7 @@ function MarkdownEditor:_buildMainLayout()
 
   -- Title widget
   self.title_widget = TextBoxWidget:new{
-    text = _("Fleeting Note (Back: dismiss keyboard)"),
+    text = _("Fleeting Note - tap 'Hide' on keyboard to close it"),
     face = Font:getFace("tfont", 20),  -- Valid font face for longer text
     width = math.min(Screen:getWidth() - 100, 700),  -- Leave room for close button
   }
