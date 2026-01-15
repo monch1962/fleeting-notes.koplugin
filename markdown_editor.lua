@@ -386,11 +386,33 @@ end
 
 -- Build the main layout
 function MarkdownEditor:_buildMainLayout()
-  -- Title widget (tappable to dismiss keyboard)
+  -- Close button (×)
+  self.close_button = Button:new{
+    text = "×",
+    callback = function()
+      self:_doneAndClose()
+    end,
+    width = 50,
+    height = 40,
+    font_face = "smallfont",
+    font_size = 22,
+    bordersize = 1,
+    radius = 3,
+    background = Blitbuffer.COLOR_DARK_GRAY,
+  }
+
+  -- Title widget
   self.title_widget = TextBoxWidget:new{
     text = _("Fleeting Note"),
     face = Font:getFace("tfont", 22),
-    width = math.min(Screen:getWidth() - 40, 800),
+    width = math.min(Screen:getWidth() - 100, 700),  -- Leave room for close button
+  }
+
+  -- Title bar with close button
+  self.title_bar = HorizontalGroup:new{
+    self.close_button,
+    HorizontalSpan:new{ width = 10 },
+    self.title_widget,
   }
 
   -- Make title container tappable to dismiss keyboard
@@ -398,7 +420,7 @@ function MarkdownEditor:_buildMainLayout()
     margin = 0,
     bordersize = 0,
     background = Blitbuffer.COLOR_WHITE,
-    self.title_widget,
+    self.title_bar,
   }
 
   -- Add tap handler to title container
