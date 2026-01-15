@@ -13,6 +13,10 @@ describe("Fleeting Notes Plugin", function()
     package.loaded["ui/uimanager"] = {
       show = function() end,
       close = function() end,
+      nextTick = function(cb) cb() end,
+      setDirty = function() end,
+      scheduleIn = function() return {} end,
+      unschedule = function() end,
     }
 
     package.loaded["datastorage"] = {

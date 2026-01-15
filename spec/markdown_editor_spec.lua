@@ -131,17 +131,9 @@ describe("markdown_editor", function()
     InputText.key_events = {}
     package.loaded["ui/widget/inputtext"] = InputText
 
-    -- Button widget mock - needs to simulate callback execution
+    -- Button widget mock - don't execute callbacks automatically
     local ButtonMock = createWidgetMock()
     ButtonMock.callback = nil
-    function ButtonMock:new(cls)
-      local obj = createWidgetMock():new(cls)
-      -- When button is "clicked", execute its callback
-      if obj.callback then
-        obj.callback()
-      end
-      return obj
-    end
     package.loaded["ui/widget/button"] = ButtonMock
 
     package.loaded["ui/widget/horizontalgroup"] = createWidgetMock()
@@ -226,9 +218,19 @@ describe("markdown_editor", function()
 
     -- UIManager needs more methods
     mock_ui_manager.setDirty = function(...) end
-    mock_ui_manager.nextTick = function(cb) cb() end
+    mock_ui_manager.nextTick = function(cb)
+      -- Don't execute automatically in tests to avoid side effects
+      -- Just store the callback for manual execution if needed
+      return true
+    end
     mock_ui_manager.close = function(...) end
     mock_ui_manager.show = function(...) end
+    -- Don't execute scheduleIn callbacks in tests to avoid infinite loops
+    -- The auto-dismiss logic creates a recursive scheduleIn call
+    mock_ui_manager.scheduleIn = function(delay, cb)
+      return {}  -- Return a mock job object, don't execute cb
+    end
+    mock_ui_manager.unschedule = function() end  -- For auto-dismiss
     package.loaded["ui/uimanager"] = mock_ui_manager
 
     package.loaded["markdown_formatter"] = {

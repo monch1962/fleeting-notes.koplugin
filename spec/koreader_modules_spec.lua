@@ -144,6 +144,8 @@ describe("KOReader module imports", function()
       close = function() end,
       nextTick = function(cb) cb() end,
       setDirty = function() end,
+      scheduleIn = function() return {} end,  -- Mock for auto-dismiss
+      unschedule = function() end,  -- Mock for auto-dismiss
     }
 
     -- Mock other dependencies

@@ -85,9 +85,6 @@ function MarkdownEditor:init()
   self.last_saved_content = ""    -- Track last saved content for comparison
   self.auto_save_pending = false  -- Flag for pending save operation
 
-  -- Edit mode state
-  self.is_editing = false  -- Start in read-only mode (no keyboard)
-
   -- Auto-dismiss keyboard state
   self.last_typing_time = 0  -- Last time user typed something
   self.auto_dismiss_delay = 5  -- Seconds of inactivity before dismissing keyboard
@@ -97,28 +94,14 @@ function MarkdownEditor:init()
   -- Build UI
   self:_buildToolbar()
   self:_buildActionButtons()
-  self:_buildEditor()  -- Build editor (will be read-only initially)
+  self:_buildEditor()  -- Build editor (InputText)
   self:_buildMainLayout()
+
+  -- Start auto-dismiss check
+  self:_startAutoDismissCheck()
 
   -- Map keyboard shortcuts
   self.key_events.Back = { { "Back" }, doc = "dismiss keyboard or close" }
-end
-
--- Toggle between read-only and edit modes
-function MarkdownEditor:_toggleEditMode()
-  self.is_editing = not self.is_editing
-
-  if self.is_editing then
-    -- Switch to edit mode (show InputText with keyboard)
-    self:_rebuildEditorForEditing()
-    -- Start auto-dismiss check when entering edit mode
-    self:_startAutoDismissCheck()
-  else
-    -- Switch to read-only mode (show TextBoxWidget, hide keyboard)
-    self:_rebuildEditorForReading()
-    -- Stop auto-dismiss check when leaving edit mode
-    self:_stopAutoDismissCheck()
-  end
 end
 
 -- Start checking for keyboard auto-dismiss
@@ -139,8 +122,8 @@ function MarkdownEditor:autoDismissCheck()
     return
   end
 
-  -- Only check if we're in edit mode and keyboard is visible
-  if self.is_editing and self.editor and self.editor.keyboard then
+  -- Check if keyboard is visible
+  if self.editor and self.editor.keyboard then
     local current_time = os.time()
     local idle_time = current_time - self.last_typing_time
 
@@ -228,12 +211,15 @@ end
 
 -- Update the title to show auto-save status
 function MarkdownEditor:_updateTitle(has_file)
-  if has_file then
-    self.title_widget:setText(_("Fleeting Note (auto-saving)"))
-  else
-    self.title_widget:setText(_("Fleeting Note"))
+  -- Only update if title_widget exists (may not exist during initialization)
+  if self.title_widget then
+    if has_file then
+      self.title_widget:setText(_("Fleeting Note (auto-saving)"))
+    else
+      self.title_widget:setText(_("Fleeting Note"))
+    end
+    UIManager:setDirty(self.main_frame, "ui")
   end
-  UIManager:setDirty(self.main_frame, "ui")
 end
 
 -- Show a subtle auto-save indicator
@@ -375,45 +361,8 @@ function MarkdownEditor:_buildToolbar()
   end
 end
 
--- Build the text editor area (read-only mode by default)
+-- Build the text editor area (InputText with keyboard)
 function MarkdownEditor:_buildEditor()
-  -- Calculate available height for editor more conservatively
-  local reserved_space = 350
-  local available_height = Screen:getHeight() - reserved_space
-
-  -- Ensure minimum and maximum height
-  if available_height < 100 then
-    available_height = 100
-  elseif available_height > 600 then
-    available_height = 600
-  end
-
-  -- Start with read-only TextBoxWidget (no keyboard)
-  self:_rebuildEditorForReading()
-end
-
--- Build read-only editor (TextBoxWidget, no keyboard)
-function MarkdownEditor:_rebuildEditorForReading()
-  local available_height = Screen:getHeight() - 350
-  if available_height < 100 then available_height = 100
-  elseif available_height > 600 then available_height = 600 end
-
-  -- Use self.content as the source of truth
-  local current_text = self.content or ""
-
-  self.editor = TextBoxWidget:new{
-    text = current_text,
-    face = self.face,
-    width = math.min(Screen:getWidth() - 40, 800),
-    height = available_height,
-    alignment = "left",
-  }
-
-  self:_updateMainLayout()
-end
-
--- Build editable editor (InputText with keyboard)
-function MarkdownEditor:_rebuildEditorForEditing()
   local available_height = Screen:getHeight() - 350
   if available_height < 100 then available_height = 100
   elseif available_height > 600 then available_height = 600 end
@@ -447,7 +396,7 @@ function MarkdownEditor:_rebuildEditorForEditing()
   -- Remove InputText's default Back button handling
   new_editor.key_events = {}
 
-  -- When keyboard is dismissed, switch back to read-only mode
+  -- When keyboard is dismissed, update content
   local editor_instance = self  -- Capture MarkdownEditor instance
   local original_close_keyboard = new_editor.onCloseKeyboard
   function new_editor:onCloseKeyboard()
@@ -459,12 +408,6 @@ function MarkdownEditor:_rebuildEditorForEditing()
     if original_close_keyboard then
       original_close_keyboard(new_editor)
     end
-    -- Switch back to read-only mode after keyboard is dismissed
-    UIManager:nextTick(function()
-      if editor_instance._toggleEditMode then
-        editor_instance:_toggleEditMode()
-      end
-    end)
   end
 
   -- Now assign to self.editor
@@ -480,8 +423,8 @@ function MarkdownEditor:_buildActionButtons()
   self.save_button = Button:new{
     text = _("Done"),
     callback = function()
-      -- Only dismiss keyboard if we're in edit mode and keyboard exists
-      if self.is_editing and self.editor and self.editor.keyboard then
+      -- Dismiss keyboard if it's open
+      if self.editor and self.editor.keyboard then
         self.editor:onCloseKeyboard()
       end
       UIManager:nextTick(function()
@@ -500,8 +443,8 @@ function MarkdownEditor:_buildActionButtons()
   self.new_note_button = Button:new{
     text = _("Save & New"),
     callback = function()
-      -- Only dismiss keyboard if we're in edit mode and keyboard exists
-      if self.is_editing and self.editor and self.editor.keyboard then
+      -- Dismiss keyboard if it's open
+      if self.editor and self.editor.keyboard then
         self.editor:onCloseKeyboard()
       end
       UIManager:nextTick(function()
@@ -520,8 +463,8 @@ function MarkdownEditor:_buildActionButtons()
   self.cancel_button = Button:new{
     text = _("Delete"),
     callback = function()
-      -- Only dismiss keyboard if we're in edit mode and keyboard exists
-      if self.is_editing and self.editor and self.editor.keyboard then
+      -- Dismiss keyboard if it's open
+      if self.editor and self.editor.keyboard then
         self.editor:onCloseKeyboard()
       end
       UIManager:nextTick(function()
@@ -540,21 +483,6 @@ end
 
 -- Build the main layout
 function MarkdownEditor:_buildMainLayout()
-  -- Edit Text button (to toggle keyboard on/off)
-  self.edit_button = Button:new{
-    text = _("Edit Text"),
-    callback = function()
-      self:_toggleEditMode()
-    end,
-    width = 110,
-    height = 40,
-    font_face = "smallfont",
-    font_size = 16,
-    bordersize = 2,
-    radius = 5,
-    background = Blitbuffer.COLOR_DARK_GRAY,
-  }
-
   -- Close button (×)
   self.close_button = Button:new{
     text = "×",
@@ -572,15 +500,13 @@ function MarkdownEditor:_buildMainLayout()
 
   -- Title widget
   self.title_widget = TextBoxWidget:new{
-    text = _("Fleeting Note (auto-hides keyboard after 5s)"),
-    face = Font:getFace("tfont", 18),  -- Smaller font for longer text
+    text = _("Fleeting Note"),
+    face = Font:getFace("tfont", 18),
     width = math.min(Screen:getWidth() - 200, 500),
   }
 
-  -- Title bar with edit button, close button, and title
+  -- Title bar with close button and title
   self.title_bar = HorizontalGroup:new{
-    self.edit_button,
-    HorizontalSpan:new{ width = 10 },
     self.close_button,
     HorizontalSpan:new{ width = 10 },
     self.title_widget,
@@ -674,13 +600,6 @@ end
 -- @param format_type string: Type of formatting to apply
 -- @param ...: Additional parameters (e.g., heading level)
 function MarkdownEditor:_applyCurrentSelection(format_type, ...)
-  -- If in read-only mode, switch to edit mode first
-  if not self.is_editing then
-    self:_toggleEditMode()
-    -- Don't apply formatting yet, wait for user to enter edit mode
-    return
-  end
-
   -- Get current text from self.content
   local current_text = self.content
 
