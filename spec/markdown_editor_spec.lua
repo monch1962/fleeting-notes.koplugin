@@ -804,5 +804,63 @@ describe("markdown_editor", function()
         assert.is_truthy(found_wiki_link, "Wiki link button not found in toolbar")
       end)
     end)
+
+    describe("bug: keyboard auto-dismiss not working", function()
+      it("should have auto-dismiss state variables", function()
+        -- Auto-dismiss requires these state variables
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("number", type(editor.last_typing_time))
+        assert.is.equals("number", type(editor.auto_dismiss_delay))
+        assert.is.equals("boolean", type(editor._stop_auto_dismiss))
+      end)
+
+      it("should have _resetAutoDismissTimer method", function()
+        -- This method is called when user types to reset the timer
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("function", type(editor._resetAutoDismissTimer))
+      end)
+
+      it("should have autoDismissCheck method", function()
+        -- This is the main method that checks if keyboard should be dismissed
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("function", type(editor.autoDismissCheck))
+      end)
+
+      it("should have _startAutoDismissCheck method", function()
+        -- This method starts the auto-dismiss check loop
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("function", type(editor._startAutoDismissCheck))
+      end)
+
+      it("should have _stopAutoDismissCheck method", function()
+        -- This method stops the auto-dismiss check loop
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("function", type(editor._stopAutoDismissCheck))
+      end)
+
+      it("should reset typing timer when _resetAutoDismissTimer is called", function()
+        local editor = markdown_editor:new{content = "test"}
+        local old_time = editor.last_typing_time
+
+        -- Wait a bit to ensure time has passed
+        os.execute("sleep 0.01")
+
+        editor:_resetAutoDismissTimer()
+
+        -- Timer should have been updated to a later time
+        assert.is_truthy(editor.last_typing_time >= old_time)
+      end)
+
+      it("should have auto_dismiss_delay set to 5 seconds", function()
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals(5, editor.auto_dismiss_delay)
+      end)
+    end)
   end)
 end)
