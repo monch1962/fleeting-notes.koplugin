@@ -158,6 +158,18 @@ end
 function MarkdownEditor:_buildToolbar()
   self.toolbar_buttons = {}
 
+  -- Hide Keyboard button (always accessible, even when keyboard is open)
+  table.insert(self.toolbar_buttons, {
+    id = "hide_keyboard",
+    text = "⌨",
+    color = Blitbuffer.COLOR_DARK_GRAY,
+    callback = function()
+      if self.editor and self.editor.keyboard then
+        self.editor:onCloseKeyboard()
+      end
+    end,
+  })
+
   -- Bold button
   table.insert(self.toolbar_buttons, {
     id = "bold",
