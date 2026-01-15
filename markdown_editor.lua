@@ -6,7 +6,7 @@
 local UIManager = require("ui/uimanager")
 local Widget = require("ui/widget/widget")
 local InputContainer = require("ui/widget/container/inputcontainer")
-local TextBoxWidget = require("ui/widget/textboxwidget")
+local TextWidget = require("ui/widget/textwidget")
 local InputText = require("ui/widget/inputtext")
 local Button = require("ui/widget/button")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
@@ -213,11 +213,22 @@ end
 function MarkdownEditor:_updateTitle(has_file)
   -- Only update if title_widget exists (may not exist during initialization)
   if self.title_widget then
-    if has_file then
-      self.title_widget:setText(_("Fleeting Note (auto-saving)"))
-    else
-      self.title_widget:setText(_("Fleeting Note"))
-    end
+    -- Recreate title widget with new text
+    local title_text = has_file and _("Fleeting Note (auto-saving)") or _("Fleeting Note")
+    self.title_widget = TextWidget:new{
+      text = title_text,
+      face = Font:getFace("tfont", 18),
+      max_width = math.min(Screen:getWidth() - 200, 500),
+    }
+
+    -- Update title bar with new widget
+    self.title_bar = HorizontalGroup:new{
+      self.close_button,
+      HorizontalSpan:new{ width = 10 },
+      self.title_widget,
+    }
+
+    self.title_container[1] = self.title_bar
     UIManager:setDirty(self.main_frame, "ui")
   end
 end
@@ -498,11 +509,11 @@ function MarkdownEditor:_buildMainLayout()
     background = Blitbuffer.COLOR_DARK_GRAY,
   }
 
-  -- Title widget
-  self.title_widget = TextBoxWidget:new{
+  -- Title widget (using TextWidget instead of TextBoxWidget for simpler rendering)
+  self.title_widget = TextWidget:new{
     text = _("Fleeting Note"),
     face = Font:getFace("tfont", 18),
-    width = math.min(Screen:getWidth() - 200, 500),
+    max_width = math.min(Screen:getWidth() - 200, 500),
   }
 
   -- Title bar with close button and title

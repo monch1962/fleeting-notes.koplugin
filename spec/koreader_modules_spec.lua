@@ -124,6 +124,10 @@ describe("KOReader module imports", function()
     TextBoxWidget.setText = function(self, text) self.text = text end
     package.loaded["ui/widget/textboxwidget"] = TextBoxWidget
 
+    -- TextWidget mock
+    local TextWidget = createWidgetMock()
+    package.loaded["ui/widget/textwidget"] = TextWidget
+
     local InputText = createWidgetMock()
     InputText.getText = function(self) return self.text or "" end
     InputText.setText = function(self, text) self.text = text end

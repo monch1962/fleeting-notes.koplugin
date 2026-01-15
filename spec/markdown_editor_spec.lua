@@ -122,6 +122,11 @@ describe("markdown_editor", function()
     TextBoxWidget.onTap = function(self) end  -- Add onTap method
     package.loaded["ui/widget/textboxwidget"] = TextBoxWidget
 
+    -- TextWidget mock (for title widget)
+    local TextWidget = createWidgetMock()
+    TextWidget.getText = function(self) return self.text or "" end
+    package.loaded["ui/widget/textwidget"] = TextWidget
+
     -- InputText widget mock
     local InputText = createWidgetMock()
     InputText.getText = function(self) return self.text or "" end
@@ -293,6 +298,7 @@ describe("markdown_editor", function()
     package.loaded["ui/widget/widget"] = nil
     package.loaded["ui/widget/container/inputcontainer"] = nil
     package.loaded["ui/widget/textboxwidget"] = nil
+    package.loaded["ui/widget/textwidget"] = nil
     package.loaded["ui/widget/inputtext"] = nil
     package.loaded["ui/widget/button"] = nil
     package.loaded["ui/widget/horizontalgroup"] = nil
