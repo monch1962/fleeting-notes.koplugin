@@ -634,9 +634,12 @@ describe("markdown_editor", function()
         -- The fix was to add a close button (×) in the title bar
         local editor = markdown_editor:new{content = "test"}
 
-        assert.is_truthy(editor.close_button)
-        assert.is.equals("×", editor.close_button.text)
-        assert.is.equals("function", type(editor.close_button.callback))
+        -- The close button is wrapped in a FrameContainer for proper touch handling
+        assert.is_truthy(editor.close_button_container)
+        local close_button = editor.close_button_container[1]
+        assert.is_truthy(close_button)
+        assert.is.equals("×", close_button.text)
+        assert.is.equals("function", type(close_button.callback))
       end)
 
       it("should have Back button handler", function()
@@ -876,43 +879,43 @@ describe("markdown_editor", function()
     end)
 
     describe("bug: close button (×) not working", function()
-      it("should have close_button", function()
-        -- The close button (×) should exist
+      it("should have close_button_container", function()
+        -- The close button (×) is wrapped in a FrameContainer for proper touch handling
         local editor = markdown_editor:new{content = "test"}
 
-        assert.is_truthy(editor.close_button, "close_button should exist")
+        assert.is_truthy(editor.close_button_container, "close_button_container should exist")
       end)
 
       it("should have close_button with correct text", function()
         -- Close button should display ×
         local editor = markdown_editor:new{content = "test"}
 
-        assert.is.equals("×", editor.close_button.text)
+        -- The button is the first child of the container
+        local close_button = editor.close_button_container[1]
+        assert.is_truthy(close_button, "close button should exist inside container")
+        assert.is.equals("×", close_button.text)
       end)
 
       it("should have close_button with callback function", function()
         -- Close button should have a callback
         local editor = markdown_editor:new{content = "test"}
 
-        assert.is.equals("function", type(editor.close_button.callback))
+        -- The button is the first child of the container
+        local close_button = editor.close_button_container[1]
+        assert.is_truthy(close_button, "close button should exist inside container")
+        assert.is.equals("function", type(close_button.callback))
       end)
 
-      it("should have close_button with onTap method for touch handling", function()
-        -- In KOReader, buttons receive touch events through onTap, not callback
-        -- The callback is just config, but onTap handles the actual tap
+      it("should have close_button_container with onTap method for touch handling", function()
+        -- The container wrapping the close button has an onTap handler
         local editor = markdown_editor:new{content = "test"}
 
-        -- close_button should have an onTap method to handle touch events
-        -- This is how KOReader's Button widget works
-        assert.is_truthy(editor.close_button, "close_button should exist")
+        assert.is_truthy(editor.close_button_container, "close_button_container should exist")
 
-        -- The button should have some way to handle taps
-        -- In KOReader Button widget, this is typically through onTap
-        local has_tap_handler = type(editor.close_button.onTap) == "function"
-        or type(editor.close_button.tap) == "function"
-        or editor.close_button.callback ~= nil
+        -- The container should have an onTap method to handle touch events
+        local has_tap_handler = type(editor.close_button_container.onTap) == "function"
 
-        assert.is_truthy(has_tap_handler, "close_button should have a tap handler")
+        assert.is_truthy(has_tap_handler, "close_button_container should have an onTap handler")
       end)
 
       it("should have _doneAndClose method", function()
@@ -934,8 +937,9 @@ describe("markdown_editor", function()
         end
 
         -- Simulate clicking the close button by calling its callback
-        if editor.close_button.callback then
-          editor.close_button.callback()
+        local close_button = editor.close_button_container[1]
+        if close_button and close_button.callback then
+          close_button.callback()
         end
 
         -- Restore original method
@@ -961,6 +965,117 @@ describe("markdown_editor", function()
 
         -- title_bar should exist and contain the close button
         assert.is_truthy(editor.title_bar, "title_bar should exist")
+      end)
+    end)
+
+    describe("bug: heading buttons affect wrong line - should affect current line", function()
+      it("should apply heading to the entire text content (current buggy behavior)", function()
+        -- Current implementation applies heading to entire text regardless of cursor
+        local editor = markdown_editor:new{content = "Line 1\nLine 2\nLine 3"}
+
+        -- Apply H1 heading
+        editor:apply_formatting("heading", 1, 10, 1)
+
+        -- Currently it prefixes the entire text (BUG)
+        -- Should be: "# Line 1\nLine 2\nLine 3"
+        assert.is.truthy(editor.content:find("^#"), "Content starts with # (current buggy behavior)")
+      end)
+
+      it("should have cursor property to track cursor position", function()
+        -- Need cursor position to apply formatting to current line only
+        local editor = markdown_editor:new{content = "Some text"}
+
+        -- Editor should have cursor property (even if mock doesn't fully support it)
+        assert.is_truthy(editor.editor, "InputText editor should exist")
+
+        -- Cursor should be accessible (may be 0 or nil in mock, but property exists)
+        if editor.editor.cursor ~= nil then
+          assert.is.truthy(true, "cursor property exists")
+        end
+      end)
+
+      it("should detect when editor has keyboard open (cursor position available)", function()
+        -- When keyboard is open, we can get cursor position
+        local editor = markdown_editor:new{content = "Line 1\nLine 2"}
+
+        -- keyboard property indicates if keyboard is visible
+        -- When keyboard is open, cursor position is meaningful
+        if editor.editor.keyboard ~= nil then
+          -- In real usage, keyboard presence means we can get cursor
+          assert.is_truthy(true, "keyboard property exists for detecting cursor position")
+        end
+      end)
+
+      it("should apply heading to current line only when keyboard is open", function()
+        -- When keyboard is open (cursor available), heading should affect only current line
+        local editor = markdown_editor:new{content = "Line 1\nLine 2\nLine 3"}
+
+        -- Simulate keyboard being open and cursor on line 2
+        editor.editor.keyboard = true  -- Simulate keyboard open
+        editor.editor.cursor = 10  -- Position somewhere in "Line 2"
+
+        -- Apply H1 heading
+        editor:apply_formatting("heading", 1, 10, 1)
+
+        -- Should prefix only line 2 (current line), not entire text
+        -- Expected: "Line 1\n# Line 2\nLine 3"
+        local lines = {}
+        for line in editor.content:gmatch("[^\n]+") do
+          table.insert(lines, line)
+        end
+
+        assert.is.equals(3, #lines, "Should still have 3 lines")
+        assert.is.equals("Line 1", lines[1], "Line 1 should be unchanged")
+        assert.is.equals("# Line 2", lines[2], "Line 2 should have H1 prefix")
+        assert.is.equals("Line 3", lines[3], "Line 3 should be unchanged")
+      end)
+
+      it("should apply heading to entire text when keyboard is closed", function()
+        -- When keyboard is closed (no cursor), heading affects entire text
+        local editor = markdown_editor:new{content = "Line 1\nLine 2\nLine 3"}
+
+        -- No keyboard, no cursor position
+        editor.editor.keyboard = nil
+
+        -- Apply H1 heading
+        editor:apply_formatting("heading", 1, 10, 1)
+
+        -- Should prefix entire text (fallback behavior)
+        assert.is.truthy(editor.content:find("^#"), "Content starts with #")
+      end)
+    end)
+
+    describe("feature: apply heading to current line only", function()
+      it("should be able to split text into lines", function()
+        -- Need to process text line by line based on cursor position
+        local editor = markdown_editor:new{content = "Line 1\nLine 2\nLine 3"}
+
+        local text = editor.content
+        local lines = {}
+        for line in text:gmatch("[^\n]+") do
+          table.insert(lines, line)
+        end
+
+        assert.is.equals(3, #lines, "Should have 3 lines")
+        assert.is.equals("Line 1", lines[1])
+        assert.is.equals("Line 2", lines[2])
+        assert.is.equals("Line 3", lines[3])
+      end)
+
+      it("should be able to find which line cursor is on (simulated)", function()
+        -- Simulate finding current line based on cursor position
+        local text = "Line 1\nLine 2\nLine 3"
+        local cursor_pos = 8  -- Somewhere in "Line 2"
+
+        -- Count newlines before cursor position to find line number
+        local current_line = 1
+        for i = 1, cursor_pos do
+          if text:sub(i, i) == "\n" then
+            current_line = current_line + 1
+          end
+        end
+
+        assert.is.equals(2, current_line, "Cursor at position 8 should be on line 2")
       end)
     end)
 

@@ -224,7 +224,7 @@ function MarkdownEditor:_updateTitle(has_file)
 
     -- Update title bar with new widget
     self.title_bar = HorizontalGroup:new{
-      self.close_button,
+      self.close_button_container,
       HorizontalSpan:new{ width = 10 },
       self.title_widget,
     }
@@ -497,20 +497,31 @@ end
 
 -- Build the main layout
 function MarkdownEditor:_buildMainLayout()
-  -- Close button (×)
-  self.close_button = Button:new{
-    text = "×",
-    callback = function()
-      self:_doneAndClose()
-    end,
-    width = 50,
-    height = 40,
-    font_face = "smallfont",
-    font_size = 22,
-    bordersize = 1,
-    radius = 3,
-    background = Blitbuffer.COLOR_DARK_GRAY,
+  -- Close button (×) - wrapped in FrameContainer for proper touch handling
+  self.close_button_container = FrameContainer:new{
+    margin = 0,
+    bordersize = 0,
+    background = Blitbuffer.COLOR_WHITE,
+    Button:new{
+      text = "×",
+      callback = function()
+        self:_doneAndClose()
+      end,
+      width = 50,
+      height = 40,
+      font_face = "smallfont",
+      font_size = 22,
+      bordersize = 1,
+      radius = 3,
+      background = Blitbuffer.COLOR_DARK_GRAY,
+    }
   }
+
+  -- Make the close button container tappable
+  function self.close_button_container:onTap()
+    self:_doneAndClose()
+    return true
+  end
 
   -- Title widget (using TextWidget instead of TextBoxWidget for simpler rendering)
   self.title_widget = TextWidget:new{
@@ -519,9 +530,9 @@ function MarkdownEditor:_buildMainLayout()
     max_width = math.min(Screen:getWidth() - 200, 500),
   }
 
-  -- Title bar with close button and title (no container wrapper to avoid touch event blocking)
+  -- Title bar with close button and title
   self.title_bar = HorizontalGroup:new{
-    self.close_button,
+    self.close_button_container,
     HorizontalSpan:new{ width = 10 },
     self.title_widget,
   }
@@ -600,27 +611,79 @@ function MarkdownEditor:_applyCurrentSelection(format_type, ...)
   -- Get current text from self.content
   local current_text = self.content
 
-  -- Apply formatting
-  local formatted = markdown_formatter.apply_formatting(
-    current_text,
-    format_type,
-    1,
-    #current_text,
-    ...
-  )
+  -- For headings, apply only to the current line if cursor position is available
+  if format_type == "heading" and self.editor and self.editor.keyboard then
+    local cursor_pos = self.editor.cursor or 0
+    local level = select(1, ...) or 1
 
-  -- Update both editor and content
-  self.content = formatted
-  if self.editor and type(self.editor.setText) == "function" then
-    self.editor:setText(formatted)
+    -- Split text into lines
+    local lines = {}
+    for line in current_text:gmatch("[^\n]*") do
+      table.insert(lines, line)
+    end
+    -- Remove trailing empty string if present
+    if lines[#lines] == "" then
+      table.remove(lines)
+    end
 
-    -- Position cursor after heading prefix for headings
-    if format_type == "heading" then
-      local level = select(1, ...) or 1
-      -- Cursor position = # of #'s + 1 for the space
-      local cursor_pos = level + 1
+    -- Find which line the cursor is on
+    local current_line_num = 1
+    local char_count = 0
+    for i, line in ipairs(lines) do
+      local line_len = #line
+      if char_count + line_len >= cursor_pos then
+        current_line_num = i
+        break
+      end
+      char_count = char_count + line_len + 1  -- +1 for newline
+    end
+
+    -- Apply heading prefix only to current line
+    local heading_prefix = string.rep("#", level) .. " "
+    lines[current_line_num] = heading_prefix .. lines[current_line_num]
+
+    -- Reconstruct text
+    local formatted = table.concat(lines, "\n")
+
+    -- Update content and editor
+    self.content = formatted
+    if self.editor and type(self.editor.setText) == "function" then
+      self.editor:setText(formatted)
+
+      -- Position cursor after heading prefix on the current line
+      local new_cursor_pos = 0
+      for i = 1, current_line_num - 1 do
+        new_cursor_pos = new_cursor_pos + #lines[i] + 1  -- +1 for newline
+      end
+      new_cursor_pos = new_cursor_pos + #heading_prefix
+
       if self.editor.cursor then
-        self.editor.cursor = cursor_pos
+        self.editor.cursor = new_cursor_pos
+      end
+    end
+  else
+    -- For non-heading formatting or when cursor unavailable, apply to all text
+    local formatted = markdown_formatter.apply_formatting(
+      current_text,
+      format_type,
+      1,
+      #current_text,
+      ...
+    )
+
+    -- Update both editor and content
+    self.content = formatted
+    if self.editor and type(self.editor.setText) == "function" then
+      self.editor:setText(formatted)
+
+      -- Position cursor after heading prefix for headings
+      if format_type == "heading" then
+        local level = select(1, ...) or 1
+        -- Cursor position = # of #'s + 1 for the space
+        local cursor_pos = level + 1
+        if self.editor.cursor then
+          self.editor.cursor = cursor_pos
+        end
       end
     end
   end
