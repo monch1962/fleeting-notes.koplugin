@@ -481,8 +481,8 @@ function MarkdownEditor:_buildActionButtons()
   self.save_button = Button:new{
     text = _("Done"),
     callback = function()
-      -- Unfocus editor to dismiss keyboard first
-      if self.editor.keyboard then
+      -- Only dismiss keyboard if we're in edit mode and keyboard exists
+      if self.is_editing and self.editor and self.editor.keyboard then
         self.editor:onCloseKeyboard()
       end
       UIManager:nextTick(function()
@@ -501,8 +501,8 @@ function MarkdownEditor:_buildActionButtons()
   self.new_note_button = Button:new{
     text = _("Save & New"),
     callback = function()
-      -- Unfocus editor to dismiss keyboard first
-      if self.editor.keyboard then
+      -- Only dismiss keyboard if we're in edit mode and keyboard exists
+      if self.is_editing and self.editor and self.editor.keyboard then
         self.editor:onCloseKeyboard()
       end
       UIManager:nextTick(function()
@@ -521,8 +521,8 @@ function MarkdownEditor:_buildActionButtons()
   self.cancel_button = Button:new{
     text = _("Delete"),
     callback = function()
-      -- Unfocus editor to dismiss keyboard first
-      if self.editor.keyboard then
+      -- Only dismiss keyboard if we're in edit mode and keyboard exists
+      if self.is_editing and self.editor and self.editor.keyboard then
         self.editor:onCloseKeyboard()
       end
       UIManager:nextTick(function()
