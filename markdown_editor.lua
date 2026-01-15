@@ -88,6 +88,12 @@ function MarkdownEditor:init()
   -- Edit mode state
   self.is_editing = false  -- Start in read-only mode (no keyboard)
 
+  -- Auto-dismiss keyboard state
+  self.last_typing_time = 0  -- Last time user typed something
+  self.auto_dismiss_delay = 5  -- Seconds of inactivity before dismissing keyboard
+  self.auto_dismiss_check_job = nil  -- Job for checking auto-dismiss
+  self._stop_auto_dismiss = false  -- Flag to stop auto-dismiss check
+
   -- Build UI
   self:_buildToolbar()
   self:_buildActionButtons()
@@ -105,10 +111,64 @@ function MarkdownEditor:_toggleEditMode()
   if self.is_editing then
     -- Switch to edit mode (show InputText with keyboard)
     self:_rebuildEditorForEditing()
+    -- Start auto-dismiss check when entering edit mode
+    self:_startAutoDismissCheck()
   else
     -- Switch to read-only mode (show TextBoxWidget, hide keyboard)
     self:_rebuildEditorForReading()
+    -- Stop auto-dismiss check when leaving edit mode
+    self:_stopAutoDismissCheck()
   end
+end
+
+-- Start checking for keyboard auto-dismiss
+function MarkdownEditor:_startAutoDismissCheck()
+  -- Stop any existing check first
+  self:_stopAutoDismissCheck()
+
+  self._stop_auto_dismiss = false
+  self.last_typing_time = os.time()
+
+  -- Schedule recurring check
+  self:autoDismissCheck()
+end
+
+-- Check if keyboard should be auto-dismissed (called every second)
+function MarkdownEditor:autoDismissCheck()
+  if self._stop_auto_dismiss then
+    return
+  end
+
+  -- Only check if we're in edit mode and keyboard is visible
+  if self.is_editing and self.editor and self.editor.keyboard then
+    local current_time = os.time()
+    local idle_time = current_time - self.last_typing_time
+
+    -- If idle for longer than the delay, dismiss keyboard
+    if idle_time >= self.auto_dismiss_delay then
+      self.editor:onCloseKeyboard()
+      return  -- Don't reschedule after dismissing
+    end
+  end
+
+  -- Reschedule check in 1 second
+  UIManager:scheduleIn(1, function()
+    self:autoDismissCheck()
+  end)
+end
+
+-- Stop auto-dismiss check
+function MarkdownEditor:_stopAutoDismissCheck()
+  self._stop_auto_dismiss = true
+  if self.auto_dismiss_check_job then
+    UIManager:unschedule(self.auto_dismiss_check_job)
+    self.auto_dismiss_check_job = nil
+  end
+end
+
+-- Reset the auto-dismiss timer (call when user types)
+function MarkdownEditor:_resetAutoDismissTimer()
+  self.last_typing_time = os.time()
 end
 
 -- Handle Back button to dismiss keyboard or close editor
@@ -381,6 +441,9 @@ function MarkdownEditor:_rebuildEditorForEditing()
     alignment = "left",
     parent = self,
     edit_callback = function()
+      -- Reset auto-dismiss timer when user types
+      self:_resetAutoDismissTimer()
+
       -- Trigger auto-save when text is modified
       if not self.auto_save_pending then
         self.auto_save_pending = true
@@ -514,8 +577,8 @@ function MarkdownEditor:_buildMainLayout()
 
   -- Title widget
   self.title_widget = TextBoxWidget:new{
-    text = _("Fleeting Note"),
-    face = Font:getFace("tfont", 20),
+    text = _("Fleeting Note (auto-hides keyboard after 5s)"),
+    face = Font:getFace("tfont", 18),  -- Smaller font for longer text
     width = math.min(Screen:getWidth() - 200, 500),
   }
 
@@ -863,6 +926,9 @@ end
 
 -- Called when widget is closed
 function MarkdownEditor:onCloseWidget()
+  -- Stop auto-dismiss check
+  self:_stopAutoDismissCheck()
+
   -- Final auto-save before closing (if not already handled)
   if self.auto_save_created and self.auto_save_filename then
     local content = self.editor:getText()
