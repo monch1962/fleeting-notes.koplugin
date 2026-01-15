@@ -98,12 +98,16 @@ end
 
 -- Handle Back button to dismiss keyboard or close editor
 function MarkdownEditor:onBack()
-  -- If keyboard is open, close it first
-  if self.editor and self.editor.keyboard and self.editor.keyboard.visible then
+  -- Always try to close keyboard if editor exists
+  -- onCloseKeyboard is safe to call even if keyboard isn't visible
+  if self.editor then
     self.editor:onCloseKeyboard()
+    -- After closing keyboard, don't close editor yet
+    -- User needs to press Back again to close editor
     return true
   end
-  -- Otherwise, close the editor
+
+  -- If no editor, close the editor
   self:_doneAndClose()
   return true
 end
@@ -332,6 +336,17 @@ function MarkdownEditor:_buildEditor()
       end
     end,
   }
+
+  -- Override InputText's onBack to dismiss keyboard then let parent handle
+  function self.editor:onBack()
+    -- If keyboard is visible, close it
+    if self.keyboard then
+      self:onCloseKeyboard()
+      return true  -- Don't propagate, let user press Back again to close
+    end
+    -- No keyboard, let parent handle (will close editor)
+    return false
+  end
 end
 
 -- Build save and cancel buttons
