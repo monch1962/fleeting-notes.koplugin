@@ -229,7 +229,9 @@ function MarkdownEditor:_updateTitle(has_file)
       self.title_widget,
     }
 
-    self.title_container[1] = self.title_bar
+    -- Update main_frame layout with new title_bar
+    -- Since title_bar is now directly in the VerticalGroup, we need to rebuild the layout
+    self:_buildMainLayout()
     UIManager:setDirty(self.main_frame, "ui")
   end
 end
@@ -517,19 +519,11 @@ function MarkdownEditor:_buildMainLayout()
     max_width = math.min(Screen:getWidth() - 200, 500),
   }
 
-  -- Title bar with close button and title
+  -- Title bar with close button and title (no container wrapper to avoid touch event blocking)
   self.title_bar = HorizontalGroup:new{
     self.close_button,
     HorizontalSpan:new{ width = 10 },
     self.title_widget,
-  }
-
-  -- Title container (no onTap handler - let buttons handle their own clicks)
-  self.title_container = FrameContainer:new{
-    margin = 0,
-    bordersize = 0,
-    background = Blitbuffer.COLOR_WHITE,
-    self.title_bar,
   }
 
   -- Action buttons row (at top, won't be covered by keyboard)
@@ -574,7 +568,7 @@ function MarkdownEditor:_buildMainLayout()
     background = Blitbuffer.COLOR_WHITE,
     VerticalGroup:new{
       align = "center",
-      self.title_container,
+      self.title_bar,
       VerticalSpan:new{ width = 10 },
       action_group,
       VerticalSpan:new{ width = 10 },

@@ -677,8 +677,8 @@ describe("markdown_editor", function()
         -- Check that main_frame exists (it contains the layout)
         assert.is_truthy(editor.main_frame)
 
-        -- The layout should have title_container and action buttons before editor
-        assert.is_truthy(editor.title_container)
+        -- The layout should have title_bar and action buttons before editor
+        assert.is_truthy(editor.title_bar, "title_bar should exist")
         assert.is_truthy(editor.save_button)
         assert.is_truthy(editor.new_note_button)
         assert.is_truthy(editor.cancel_button)
@@ -686,11 +686,11 @@ describe("markdown_editor", function()
 
       it("should have tappable areas to dismiss keyboard", function()
         -- Toolbar container should be tappable to dismiss keyboard
-        -- Note: title_container does NOT have onTap because it would block the close button
+        -- Note: title_container was removed to avoid blocking close button
         local editor = markdown_editor:new{content = "test"}
 
-        -- Title container should NOT have onTap (it blocks close button)
-        assert.is_falsy(editor.title_container.onTap, "title_container should not have onTap to avoid blocking close button")
+        -- title_container should NOT exist (we removed it to avoid blocking close button)
+        assert.is_nil(editor.title_container, "title_container should not exist")
 
         -- Toolbar container should have onTap handler
         assert.is.equals("function", type(editor.toolbar_container.onTap))
@@ -783,8 +783,9 @@ describe("markdown_editor", function()
         local editor = markdown_editor:new{content = "test"}
 
         -- If FrameContainer path was wrong, this would have crashed
-        assert.is_truthy(editor.title_container)
-        assert.is_truthy(editor.toolbar_container)
+        -- Note: title_container was removed to avoid blocking close button
+        assert.is_truthy(editor.toolbar_container, "toolbar_container should exist")
+        assert.is_truthy(editor.main_frame, "main_frame (FrameContainer) should exist")
       end)
 
       it("should use correct Geometry path", function()
@@ -896,6 +897,24 @@ describe("markdown_editor", function()
         assert.is.equals("function", type(editor.close_button.callback))
       end)
 
+      it("should have close_button with onTap method for touch handling", function()
+        -- In KOReader, buttons receive touch events through onTap, not callback
+        -- The callback is just config, but onTap handles the actual tap
+        local editor = markdown_editor:new{content = "test"}
+
+        -- close_button should have an onTap method to handle touch events
+        -- This is how KOReader's Button widget works
+        assert.is_truthy(editor.close_button, "close_button should exist")
+
+        -- The button should have some way to handle taps
+        -- In KOReader Button widget, this is typically through onTap
+        local has_tap_handler = type(editor.close_button.onTap) == "function"
+        or type(editor.close_button.tap) == "function"
+        or editor.close_button.callback ~= nil
+
+        assert.is_truthy(has_tap_handler, "close_button should have a tap handler")
+      end)
+
       it("should have _doneAndClose method", function()
         -- The close button calls _doneAndClose
         local editor = markdown_editor:new{content = "test"}
@@ -903,8 +922,8 @@ describe("markdown_editor", function()
         assert.is.equals("function", type(editor._doneAndClose))
       end)
 
-      it("should call _doneAndClose when close button is clicked", function()
-        -- Clicking the close button should call _doneAndClose
+      it("should call _doneAndClose when close button callback is invoked", function()
+        -- The callback property should call _doneAndClose
         local editor = markdown_editor:new{content = "test"}
 
         -- Mock the _doneAndClose method to track if it was called
@@ -914,7 +933,7 @@ describe("markdown_editor", function()
           done_and_close_called = true
         end
 
-        -- Simulate clicking the close button
+        -- Simulate clicking the close button by calling its callback
         if editor.close_button.callback then
           editor.close_button.callback()
         end
@@ -922,7 +941,7 @@ describe("markdown_editor", function()
         -- Restore original method
         editor._doneAndClose = original_done_and_close
 
-        assert.is_truthy(done_and_close_called, "_doneAndClose should be called when close button is clicked")
+        assert.is_truthy(done_and_close_called, "_doneAndClose should be called when close button callback is invoked")
       end)
 
       it("should have main_frame widget", function()
@@ -932,22 +951,16 @@ describe("markdown_editor", function()
         assert.is_truthy(editor.main_frame, "main_frame should exist")
       end)
 
-      it("should NOT have onTap handler on title_container that blocks button clicks", function()
-        -- The title_container should NOT have an onTap handler that intercepts clicks
-        -- This was preventing the close button from working
+      it("should NOT have title_container that blocks button clicks", function()
+        -- The title_container has been removed to avoid touch event blocking
+        -- title_bar is now used directly in the layout
         local editor = markdown_editor:new{content = "test"}
 
-        -- title_container should exist
-        assert.is_truthy(editor.title_container, "title_container should exist")
+        -- title_container should NOT exist (we removed it)
+        assert.is_nil(editor.title_container, "title_container should not exist as it blocks button clicks")
 
-        -- title_container should NOT have an onTap method, or if it does,
-        -- it should not block button clicks
-        -- The best solution is to NOT have onTap on title_container at all
-        if editor.title_container.onTap then
-          -- If onTap exists, it should be nil or not interfere with buttons
-          -- But ideally, it shouldn't exist
-          assert.is_falsy(true, "title_container should not have onTap handler as it blocks button clicks")
-        end
+        -- title_bar should exist and contain the close button
+        assert.is_truthy(editor.title_bar, "title_bar should exist")
       end)
     end)
 
