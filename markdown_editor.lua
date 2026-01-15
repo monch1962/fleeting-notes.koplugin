@@ -188,8 +188,8 @@ end
 function MarkdownEditor:_doAutoSave()
   self.auto_save_pending = false
 
-  -- Get current content
-  local current_content = self.editor:getText()
+  -- Use self.content (kept up to date by edit_callback)
+  local current_content = self.content
 
   -- Don't save if empty
   if not note_manager.validate_content(current_content) then
@@ -398,13 +398,8 @@ function MarkdownEditor:_rebuildEditorForReading()
   if available_height < 100 then available_height = 100
   elseif available_height > 600 then available_height = 600 end
 
-  -- Save current content if switching from edit mode
-  local current_text = ""
-  if self.editor then
-    current_text = self.editor:getText() or self.content
-  else
-    current_text = self.content
-  end
+  -- Use self.content as the source of truth
+  local current_text = self.content or ""
 
   self.editor = TextBoxWidget:new{
     text = current_text,
@@ -414,7 +409,6 @@ function MarkdownEditor:_rebuildEditorForReading()
     alignment = "left",
   }
 
-  self.content = current_text
   self:_updateMainLayout()
 end
 
@@ -424,13 +418,8 @@ function MarkdownEditor:_rebuildEditorForEditing()
   if available_height < 100 then available_height = 100
   elseif available_height > 600 then available_height = 600 end
 
-  -- Save current content
-  local current_text = ""
-  if self.editor then
-    current_text = self.editor:getText() or self.content
-  else
-    current_text = self.content
-  end
+  -- Use self.content as the source of truth
+  local current_text = self.content or ""
 
   self.editor = InputText:new{
     text = current_text,
@@ -441,6 +430,9 @@ function MarkdownEditor:_rebuildEditorForEditing()
     alignment = "left",
     parent = self,
     edit_callback = function()
+      -- Update self.content when text changes
+      self.content = self.editor:getText()
+
       -- Reset auto-dismiss timer when user types
       self:_resetAutoDismissTimer()
 
@@ -460,6 +452,11 @@ function MarkdownEditor:_rebuildEditorForEditing()
   -- When keyboard is dismissed, switch back to read-only mode
   local original_close_keyboard = self.editor.onCloseKeyboard
   function self.editor:onCloseKeyboard()
+    -- Update content one last time before closing
+    if self.editor and type(self.editor.getText) == "function" then
+      self.content = self.editor:getText()
+    end
+
     if original_close_keyboard then
       original_close_keyboard(self)
     end
@@ -471,7 +468,6 @@ function MarkdownEditor:_rebuildEditorForEditing()
     end)
   end
 
-  self.content = current_text
   self:_updateMainLayout()
 
   -- Automatically show keyboard when entering edit mode
@@ -686,8 +682,8 @@ function MarkdownEditor:_applyCurrentSelection(format_type, ...)
     return
   end
 
-  -- Get current text
-  local current_text = self.editor:getText()
+  -- Get current text from self.content
+  local current_text = self.content
 
   -- Apply formatting
   local formatted = markdown_formatter.apply_formatting(
@@ -698,8 +694,11 @@ function MarkdownEditor:_applyCurrentSelection(format_type, ...)
     ...
   )
 
-  self.editor:setText(formatted)
+  -- Update both editor and content
   self.content = formatted
+  if self.editor and type(self.editor.setText) == "function" then
+    self.editor:setText(formatted)
+  end
 
   -- Trigger auto-save after formatting
   self:_doAutoSave()
@@ -712,11 +711,13 @@ end
 function MarkdownEditor:_insertLink()
   -- In a full implementation, this would show input dialogs
   -- For now, insert a template link
-  local current_text = self.editor:getText()
+  local current_text = self.content
   local link_template = "[link text](url)"
 
-  self.editor:setText(current_text .. " " .. link_template)
-  self.content = self.editor:getText()
+  self.content = current_text .. " " .. link_template
+  if self.editor and type(self.editor.setText) == "function" then
+    self.editor:setText(self.content)
+  end
 
   -- Trigger auto-save after inserting link
   self:_doAutoSave()
@@ -735,7 +736,8 @@ end
 
 -- Done: save final state and close (file already auto-saved)
 function MarkdownEditor:_doneAndClose()
-  local content = self.editor:getText()
+  -- Use self.content (kept up to date by edit_callback)
+  local content = self.content
 
   -- If file was created, it's already saved
   if self.auto_save_created and self.auto_save_filename then
@@ -791,7 +793,8 @@ end
 
 -- Save & New: close current note and immediately create a new one
 function MarkdownEditor:_saveAndNewNote()
-  local content = self.editor:getText()
+  -- Use self.content
+  local content = self.content
 
   -- If file was created, it's already saved
   if self.auto_save_created and self.auto_save_filename then
@@ -901,7 +904,8 @@ end
 -- Public method to get current note info
 -- @return table|nil: Note object or nil if no content
 function MarkdownEditor:get_note()
-  local content = self.editor:getText()
+  -- Use self.content (kept up to date by edit_callback)
+  local content = self.content
 
   if not note_manager.validate_content(content) then
     return nil
@@ -931,9 +935,9 @@ function MarkdownEditor:onCloseWidget()
 
   -- Final auto-save before closing (if not already handled)
   if self.auto_save_created and self.auto_save_filename then
-    local content = self.editor:getText()
-    if note_manager.validate_content(content) then
-      file_storage.save_note(self.auto_save_filename, content)
+    -- Use self.content (already up to date from edit_callback)
+    if note_manager.validate_content(self.content) then
+      file_storage.save_note(self.auto_save_filename, self.content)
     end
   end
 end
