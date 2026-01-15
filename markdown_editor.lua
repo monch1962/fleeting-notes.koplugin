@@ -92,7 +92,20 @@ function MarkdownEditor:init()
   self:_buildMainLayout()
 
   -- Map keyboard shortcuts
-  self.key_events.Close = { { "Back" }, doc = "close editor" }
+  -- Back button now dismisses keyboard first, then closes editor on second press
+  self.key_events.Back = { { "Back" }, doc = "dismiss keyboard or close" }
+end
+
+-- Handle Back button to dismiss keyboard or close editor
+function MarkdownEditor:onBack()
+  -- If keyboard is open, close it first
+  if self.editor and self.editor.keyboard and self.editor.keyboard.visible then
+    self.editor:onCloseKeyboard()
+    return true
+  end
+  -- Otherwise, close the editor
+  self:_doneAndClose()
+  return true
 end
 
 -- Perform the auto-save operation
@@ -403,8 +416,8 @@ function MarkdownEditor:_buildMainLayout()
 
   -- Title widget
   self.title_widget = TextBoxWidget:new{
-    text = _("Fleeting Note"),
-    face = Font:getFace("tfont", 22),
+    text = _("Fleeting Note (Back: dismiss keyboard)"),
+    face = Font:getFace("smallfont", 18),  -- Smaller font for longer text
     width = math.min(Screen:getWidth() - 100, 700),  -- Leave room for close button
   }
 
