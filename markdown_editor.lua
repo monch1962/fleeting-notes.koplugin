@@ -58,6 +58,51 @@ local colors = {
   delete = make_color(200, 50, 50),    -- Red (destructive)
 }
 
+-- CloseButtonContainer - A tappable container for the close button
+-- Extends InputContainer to properly handle touch events
+local CloseButtonContainer = InputContainer:extend{
+  background = Blitbuffer.COLOR_WHITE,
+  margin = 0,
+  bordersize = 0,
+  -- The editor instance (will be set to self when used)
+  editor_instance = nil,
+}
+
+function CloseButtonContainer:init()
+  -- Initialize the FrameContainer
+  self.frame = FrameContainer:new{
+    margin = self.margin,
+    bordersize = self.bordersize,
+    background = self.background,
+    self.close_button,
+  }
+
+  -- Setup touch event zones for this container
+  -- This makes the entire container area tappable
+  if self.close_button and self.close_button.width and self.close_button.height then
+    self.dimen = Geom:new{
+      w = self.close_button.width,
+      h = self.close_button.height,
+    }
+  end
+end
+
+function CloseButtonContainer:onTap()
+  -- Call the editor's _doneAndClose method
+  if self.editor_instance then
+    self.editor_instance:_doneAndClose()
+  end
+  return true
+end
+
+function CloseButtonContainer:getSize()
+  return self.frame:getSize()
+end
+
+function CloseButtonContainer:paintTo(bb, x, y)
+  return self.frame:paintTo(bb, x, y)
+end
+
 -- Markdown Editor Widget with Auto-Save
 local MarkdownEditor = InputContainer:extend{
   -- Initial content
@@ -497,31 +542,26 @@ end
 
 -- Build the main layout
 function MarkdownEditor:_buildMainLayout()
-  -- Close button (×) - wrapped in FrameContainer for proper touch handling
-  self.close_button_container = FrameContainer:new{
-    margin = 0,
-    bordersize = 0,
-    background = Blitbuffer.COLOR_WHITE,
-    Button:new{
-      text = "×",
-      callback = function()
-        self:_doneAndClose()
-      end,
-      width = 50,
-      height = 40,
-      font_face = "smallfont",
-      font_size = 22,
-      bordersize = 1,
-      radius = 3,
-      background = Blitbuffer.COLOR_DARK_GRAY,
-    }
+  -- Close button (×) - wrapped in CloseButtonContainer for proper touch handling
+  self.close_button = Button:new{
+    text = "×",
+    callback = function()
+      self:_doneAndClose()
+    end,
+    width = 50,
+    height = 40,
+    font_face = "smallfont",
+    font_size = 22,
+    bordersize = 1,
+    radius = 3,
+    background = Blitbuffer.COLOR_DARK_GRAY,
   }
 
-  -- Make the close button container tappable
-  function self.close_button_container:onTap()
-    self:_doneAndClose()
-    return true
-  end
+  -- Create the close button container with proper touch handling
+  self.close_button_container = CloseButtonContainer:new{
+    close_button = self.close_button,
+    editor_instance = self,
+  }
 
   -- Title widget (using TextWidget instead of TextBoxWidget for simpler rendering)
   self.title_widget = TextWidget:new{

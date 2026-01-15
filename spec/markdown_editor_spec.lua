@@ -634,12 +634,13 @@ describe("markdown_editor", function()
         -- The fix was to add a close button (×) in the title bar
         local editor = markdown_editor:new{content = "test"}
 
-        -- The close button is wrapped in a FrameContainer for proper touch handling
+        -- The close button is wrapped in a CloseButtonContainer for proper touch handling
+        assert.is_truthy(editor.close_button)
+        assert.is.equals("×", editor.close_button.text)
+        assert.is.equals("function", type(editor.close_button.callback))
+
+        -- The container should also exist
         assert.is_truthy(editor.close_button_container)
-        local close_button = editor.close_button_container[1]
-        assert.is_truthy(close_button)
-        assert.is.equals("×", close_button.text)
-        assert.is.equals("function", type(close_button.callback))
       end)
 
       it("should have Back button handler", function()
@@ -879,43 +880,44 @@ describe("markdown_editor", function()
     end)
 
     describe("bug: close button (×) not working", function()
-      it("should have close_button_container", function()
-        -- The close button (×) is wrapped in a FrameContainer for proper touch handling
+      it("should have close_button", function()
+        -- The close button (×) widget should exist
         local editor = markdown_editor:new{content = "test"}
 
-        assert.is_truthy(editor.close_button_container, "close_button_container should exist")
+        assert.is_truthy(editor.close_button, "close_button should exist")
       end)
 
       it("should have close_button with correct text", function()
         -- Close button should display ×
         local editor = markdown_editor:new{content = "test"}
 
-        -- The button is the first child of the container
-        local close_button = editor.close_button_container[1]
-        assert.is_truthy(close_button, "close button should exist inside container")
-        assert.is.equals("×", close_button.text)
+        assert.is.equals("×", editor.close_button.text)
       end)
 
       it("should have close_button with callback function", function()
         -- Close button should have a callback
         local editor = markdown_editor:new{content = "test"}
 
-        -- The button is the first child of the container
-        local close_button = editor.close_button_container[1]
-        assert.is_truthy(close_button, "close button should exist inside container")
-        assert.is.equals("function", type(close_button.callback))
+        assert.is.equals("function", type(editor.close_button.callback))
       end)
 
-      it("should have close_button_container with onTap method for touch handling", function()
-        -- The container wrapping the close button has an onTap handler
+      it("should have close_button_container with proper touch handling", function()
+        -- The container wrapping the close button is a CloseButtonContainer
+        -- which extends InputContainer and properly handles touch events
         local editor = markdown_editor:new{content = "test"}
 
         assert.is_truthy(editor.close_button_container, "close_button_container should exist")
+        assert.is_truthy(editor.close_button_container.onTap, "close_button_container should have an onTap method")
+        assert.is.equals("function", type(editor.close_button_container.onTap))
+      end)
 
-        -- The container should have an onTap method to handle touch events
-        local has_tap_handler = type(editor.close_button_container.onTap) == "function"
+      it("should have close_button_container with editor_instance reference", function()
+        -- The container needs a reference to the editor to call _doneAndClose
+        local editor = markdown_editor:new{content = "test"}
 
-        assert.is_truthy(has_tap_handler, "close_button_container should have an onTap handler")
+        assert.is_truthy(editor.close_button_container, "close_button_container should exist")
+        assert.is_truthy(editor.close_button_container.editor_instance, "close_button_container should have editor_instance")
+        assert.is.equals(editor, editor.close_button_container.editor_instance, "editor_instance should be the editor")
       end)
 
       it("should have _doneAndClose method", function()
@@ -925,8 +927,8 @@ describe("markdown_editor", function()
         assert.is.equals("function", type(editor._doneAndClose))
       end)
 
-      it("should call _doneAndClose when close button callback is invoked", function()
-        -- The callback property should call _doneAndClose
+      it("should call _doneAndClose when close button onTap is invoked", function()
+        -- The onTap handler on the container should call _doneAndClose
         local editor = markdown_editor:new{content = "test"}
 
         -- Mock the _doneAndClose method to track if it was called
@@ -936,16 +938,13 @@ describe("markdown_editor", function()
           done_and_close_called = true
         end
 
-        -- Simulate clicking the close button by calling its callback
-        local close_button = editor.close_button_container[1]
-        if close_button and close_button.callback then
-          close_button.callback()
-        end
+        -- Simulate tapping the close button container
+        editor.close_button_container:onTap()
 
         -- Restore original method
         editor._doneAndClose = original_done_and_close
 
-        assert.is_truthy(done_and_close_called, "_doneAndClose should be called when close button callback is invoked")
+        assert.is_truthy(done_and_close_called, "_doneAndClose should be called when close button container is tapped")
       end)
 
       it("should have main_frame widget", function()
