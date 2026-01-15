@@ -322,6 +322,8 @@ function MarkdownEditor:_buildEditor()
     scroll = true,
     alignment = "left",
     parent = self,
+    -- Try to make keyboard less modal
+    readonly = false,
     edit_callback = function()
       -- Trigger auto-save when text is modified
       if not self.auto_save_pending then
@@ -411,6 +413,23 @@ end
 
 -- Build the main layout
 function MarkdownEditor:_buildMainLayout()
+  -- Dismiss Keyboard button (for Kobo and other touch-only devices)
+  self.dismiss_keyboard_button = Button:new{
+    text = _("Dismiss Keyboard"),
+    callback = function()
+      if self.editor and self.editor.keyboard then
+        self.editor:onCloseKeyboard()
+      end
+    end,
+    width = 160,
+    height = 40,
+    font_face = "smallfont",
+    font_size = 14,
+    bordersize = 2,
+    radius = 5,
+    background = Blitbuffer.COLOR_DARK_GRAY,
+  }
+
   -- Close button (×)
   self.close_button = Button:new{
     text = "×",
@@ -435,13 +454,15 @@ function MarkdownEditor:_buildMainLayout()
 
   -- Title widget
   self.title_widget = TextBoxWidget:new{
-    text = _("Fleeting Note - tap 'Hide' on keyboard to close it"),
-    face = Font:getFace("tfont", 20),  -- Valid font face for longer text
-    width = math.min(Screen:getWidth() - 100, 700),  -- Leave room for close button
+    text = _("Fleeting Note"),
+    face = Font:getFace("tfont", 20),
+    width = math.min(Screen:getWidth() - 250, 500),  -- Leave room for buttons
   }
 
-  -- Title bar with close button
+  -- Title bar with dismiss keyboard button, close button, and title
   self.title_bar = HorizontalGroup:new{
+    self.dismiss_keyboard_button,
+    HorizontalSpan:new{ width = 10 },
     self.close_button,
     HorizontalSpan:new{ width = 10 },
     self.title_widget,
