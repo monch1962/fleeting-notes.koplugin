@@ -92,22 +92,18 @@ function MarkdownEditor:init()
   self:_buildMainLayout()
 
   -- Map keyboard shortcuts
-  -- Back button now dismisses keyboard first, then closes editor on second press
   self.key_events.Back = { { "Back" }, doc = "dismiss keyboard or close" }
 end
 
 -- Handle Back button to dismiss keyboard or close editor
 function MarkdownEditor:onBack()
-  -- Always try to close keyboard if editor exists
-  -- onCloseKeyboard is safe to call even if keyboard isn't visible
-  if self.editor then
+  -- If editor has a keyboard, try to close it
+  if self.editor and self.editor.keyboard then
     self.editor:onCloseKeyboard()
-    -- After closing keyboard, don't close editor yet
-    -- User needs to press Back again to close editor
-    return true
+    return true  -- Stop propagation, user can press Back again to close
   end
 
-  -- If no editor, close the editor
+  -- No keyboard to close, so close the editor
   self:_doneAndClose()
   return true
 end
@@ -337,15 +333,16 @@ function MarkdownEditor:_buildEditor()
     end,
   }
 
-  -- Override InputText's onBack to dismiss keyboard then let parent handle
-  function self.editor:onBack()
-    -- If keyboard is visible, close it
-    if self.keyboard then
-      self:onCloseKeyboard()
-      return true  -- Don't propagate, let user press Back again to close
+  -- Remove InputText's default Back button handling by setting key_events to empty
+  -- This allows the parent container's onBack to handle the Back button
+  self.editor.key_events = {}
+
+  -- Override InputText's keyboard close to notify parent
+  local original_close_keyboard = self.editor.onCloseKeyboard
+  function self.editor:onCloseKeyboard()
+    if original_close_keyboard then
+      original_close_keyboard(self)
     end
-    -- No keyboard, let parent handle (will close editor)
-    return false
   end
 end
 
@@ -418,7 +415,14 @@ function MarkdownEditor:_buildMainLayout()
   self.close_button = Button:new{
     text = "×",
     callback = function()
-      self:_doneAndClose()
+      -- Dismiss keyboard first if it's open
+      if self.editor and self.editor.keyboard then
+        self.editor:onCloseKeyboard()
+      end
+      -- Then close the editor
+      UIManager:nextTick(function()
+        self:_doneAndClose()
+      end)
     end,
     width = 50,
     height = 40,
