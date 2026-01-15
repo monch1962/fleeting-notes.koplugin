@@ -288,9 +288,18 @@ end
 
 -- Build the text editor area
 function MarkdownEditor:_buildEditor()
-  -- Calculate available height for editor
-  -- Reserve space for: title (50) + action buttons (60) + toolbar (50) + margins (40) = 200
-  local available_height = Screen:getHeight() - 200
+  -- Calculate available height for editor more conservatively
+  -- Reserve: title (60) + spans (30) + buttons (60) + spans (30) + toolbar (60) + spans (30) + padding/borders (40) = 310
+  -- Also leave extra margin at bottom to ensure everything fits
+  local reserved_space = 350
+  local available_height = Screen:getHeight() - reserved_space
+
+  -- Ensure minimum and maximum height
+  if available_height < 100 then
+    available_height = 100
+  elseif available_height > 600 then
+    available_height = 600
+  end
 
   self.editor = InputText:new{
     text = self.content,
