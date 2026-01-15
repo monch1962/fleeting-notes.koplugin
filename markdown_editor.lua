@@ -305,7 +305,13 @@ function MarkdownEditor:_buildActionButtons()
   self.save_button = Button:new{
     text = _("Done"),
     callback = function()
-      self:_doneAndClose()
+      -- Unfocus editor to dismiss keyboard first
+      if self.editor.keyboard then
+        self.editor:onCloseKeyboard()
+      end
+      UIManager:nextTick(function()
+        self:_doneAndClose()
+      end)
     end,
     width = 110,
     height = 40,
@@ -319,7 +325,13 @@ function MarkdownEditor:_buildActionButtons()
   self.new_note_button = Button:new{
     text = _("Save & New"),
     callback = function()
-      self:_saveAndNewNote()
+      -- Unfocus editor to dismiss keyboard first
+      if self.editor.keyboard then
+        self.editor:onCloseKeyboard()
+      end
+      UIManager:nextTick(function()
+        self:_saveAndNewNote()
+      end)
     end,
     width = 130,
     height = 40,
@@ -333,7 +345,13 @@ function MarkdownEditor:_buildActionButtons()
   self.cancel_button = Button:new{
     text = _("Delete"),
     callback = function()
-      self:_deleteAndClose()
+      -- Unfocus editor to dismiss keyboard first
+      if self.editor.keyboard then
+        self.editor:onCloseKeyboard()
+      end
+      UIManager:nextTick(function()
+        self:_deleteAndClose()
+      end)
     end,
     width = 110,
     height = 40,
@@ -347,12 +365,29 @@ end
 
 -- Build the main layout
 function MarkdownEditor:_buildMainLayout()
-  -- Title widget
+  -- Title widget (tappable to dismiss keyboard)
   self.title_widget = TextBoxWidget:new{
     text = _("Fleeting Note"),
     face = Font:getFace("tfont", 22),
     width = math.min(Screen:getWidth() - 40, 800),
   }
+
+  -- Make title container tappable to dismiss keyboard
+  self.title_container = FrameContainer:new{
+    margin = 0,
+    bordersize = 0,
+    background = Blitbuffer.COLOR_WHITE,
+    self.title_widget,
+  }
+
+  -- Add tap handler to title container
+  function self.title_container:onTap()
+    -- Dismiss keyboard if open
+    if self.editor and self.editor.keyboard then
+      self.editor:onCloseKeyboard()
+    end
+    return true
+  end
 
   -- Action buttons row (at top, won't be covered by keyboard)
   local action_group = HorizontalGroup:new{
@@ -371,6 +406,22 @@ function MarkdownEditor:_buildMainLayout()
     table.insert(toolbar_group, HorizontalSpan:new{ width = 5 })
   end
 
+  -- Make toolbar container tappable to dismiss keyboard
+  self.toolbar_container = FrameContainer:new{
+    margin = 0,
+    bordersize = 0,
+    background = Blitbuffer.COLOR_WHITE,
+    toolbar_group,
+  }
+
+  function self.toolbar_container:onTap()
+    -- Dismiss keyboard if open so buttons can be clicked
+    if self.editor and self.editor.keyboard then
+      self.editor:onCloseKeyboard()
+    end
+    return true
+  end
+
   -- Main vertical layout with buttons at top
   self.main_frame = FrameContainer:new{
     radius = 8,
@@ -380,11 +431,11 @@ function MarkdownEditor:_buildMainLayout()
     background = Blitbuffer.COLOR_WHITE,
     VerticalGroup:new{
       align = "center",
-      self.title_widget,
+      self.title_container,    -- Tappable to dismiss keyboard
       VerticalSpan:new{ width = 10 },
       action_group,           -- Buttons at TOP - won't be covered by keyboard
       VerticalSpan:new{ width = 10 },
-      toolbar_group,
+      self.toolbar_container, -- Tappable to dismiss keyboard
       VerticalSpan:new{ width = 10 },
       self.editor,            -- Editor below toolbar
     }
