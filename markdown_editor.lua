@@ -472,10 +472,7 @@ function MarkdownEditor:_rebuildEditorForEditing()
 
   self:_updateMainLayout()
 
-  -- Automatically show keyboard when entering edit mode
-  UIManager:nextTick(function()
-    self.editor:onTap()
-  end)
+  -- Note: Keyboard will show when user taps on the text area
 end
 
 -- Build save and cancel buttons
