@@ -85,11 +85,6 @@ function MarkdownEditor:init()
   self.last_saved_content = ""    -- Track last saved content for comparison
   self.auto_save_pending = false  -- Flag for pending save operation
 
-  -- Store original editor height (make it larger - use more of the screen)
-  -- Reserve space for: title (50) + toolbar (50) + buttons (60) + margins (40) = 200
-  local available_height = Screen:getHeight() - 200
-  self.original_editor_height = math.min(available_height, 600)
-
   -- Build UI
   self:_buildToolbar()
   self:_buildEditor()
@@ -281,11 +276,15 @@ end
 
 -- Build the text editor area
 function MarkdownEditor:_buildEditor()
+  -- Calculate available height for editor
+  -- Reserve space for: title (50) + action buttons (60) + toolbar (50) + margins (40) = 200
+  local available_height = Screen:getHeight() - 200
+
   self.editor = InputText:new{
     text = self.content,
     face = self.face,
-    width = math.min(Screen:getWidth() - 40, 800),  -- Increased max width
-    height = self.original_editor_height,
+    width = math.min(Screen:getWidth() - 40, 800),
+    height = available_height,
     scroll = true,
     alignment = "left",
     parent = self,
@@ -299,59 +298,6 @@ function MarkdownEditor:_buildEditor()
       end
     end,
   }
-
-  -- Hook into keyboard show/hide events
-  local original_onShowKeyboard = self.editor.onShowKeyboard
-  local original_onCloseKeyboard = self.editor.onCloseKeyboard
-
-  self.editor.onShowKeyboard = function(...)
-    -- Call original first
-    if original_onShowKeyboard then
-      original_onShowKeyboard(self.editor, ...)
-    end
-    -- Then adjust our layout
-    self:_onKeyboardShown()
-  end
-
-  self.editor.onCloseKeyboard = function(...)
-    -- Call original first
-    if original_onCloseKeyboard then
-      original_onCloseKeyboard(self.editor, ...)
-    end
-    -- Then adjust our layout
-    self:_onKeyboardHidden()
-  end
-end
-
--- Handle keyboard being shown
-function MarkdownEditor:_onKeyboardShown()
-  -- Reduce editor height to make room for keyboard
-  -- Typical keyboard height is around 300-400 pixels
-  local keyboard_height = 350
-  local new_height = self.original_editor_height - keyboard_height
-
-  -- Ensure minimum height
-  if new_height < 100 then
-    new_height = 100
-  end
-
-  if self.editor then
-    self.editor.height = new_height
-    -- Rebuild the text widget with new height
-    self.editor:initTextBox(self.editor:getText())
-    UIManager:setDirty(self.main_frame, "ui")
-  end
-end
-
--- Handle keyboard being hidden
-function MarkdownEditor:_onKeyboardHidden()
-  -- Restore original editor height
-  if self.editor then
-    self.editor.height = self.original_editor_height
-    -- Rebuild the text widget with original height
-    self.editor:initTextBox(self.editor:getText())
-    UIManager:setDirty(self.main_frame, "ui")
-  end
 end
 
 -- Build save and cancel buttons
@@ -401,6 +347,23 @@ end
 
 -- Build the main layout
 function MarkdownEditor:_buildMainLayout()
+  -- Title widget
+  self.title_widget = TextBoxWidget:new{
+    text = _("Fleeting Note"),
+    face = Font:getFace("tfont", 22),
+    width = math.min(Screen:getWidth() - 40, 800),
+  }
+
+  -- Action buttons row (at top, won't be covered by keyboard)
+  local action_group = HorizontalGroup:new{
+    HorizontalSpan:new{ width = 15 },
+    self.save_button,
+    HorizontalSpan:new{ width = 15 },
+    self.new_note_button,
+    HorizontalSpan:new{ width = 15 },
+    self.cancel_button,
+  }
+
   -- Toolbar row
   local toolbar_group = HorizontalGroup:new{}
   for _, btn in ipairs(self.toolbar_button_widgets) do
@@ -408,24 +371,7 @@ function MarkdownEditor:_buildMainLayout()
     table.insert(toolbar_group, HorizontalSpan:new{ width = 5 })
   end
 
-  -- Action buttons row
-  local action_group = HorizontalGroup:new{
-    HorizontalSpan:new{ width = 15 },
-    self.cancel_button,
-    HorizontalSpan:new{ width = 15 },
-    self.new_note_button,
-    HorizontalSpan:new{ width = 15 },
-    self.save_button,
-  }
-
-  -- Title widget
-  self.title_widget = TextBoxWidget:new{
-    text = _("Fleeting Note"),
-    face = Font:getFace("tfont", 22),
-    width = math.min(Screen:getWidth() - 40, 600),
-  }
-
-  -- Main vertical layout
+  -- Main vertical layout with buttons at top
   self.main_frame = FrameContainer:new{
     radius = 8,
     bordersize = 2,
@@ -436,11 +382,11 @@ function MarkdownEditor:_buildMainLayout()
       align = "center",
       self.title_widget,
       VerticalSpan:new{ width = 10 },
+      action_group,           -- Buttons at TOP - won't be covered by keyboard
+      VerticalSpan:new{ width = 10 },
       toolbar_group,
       VerticalSpan:new{ width = 10 },
-      self.editor,
-      VerticalSpan:new{ width = 15 },
-      action_group,
+      self.editor,            -- Editor below toolbar
     }
   }
 
