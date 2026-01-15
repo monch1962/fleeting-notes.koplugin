@@ -685,14 +685,25 @@ describe("markdown_editor", function()
       end)
 
       it("should have tappable areas to dismiss keyboard", function()
-        -- Title and toolbar containers should be tappable to dismiss keyboard
+        -- Toolbar container should be tappable to dismiss keyboard
+        -- Note: title_container does NOT have onTap because it would block the close button
         local editor = markdown_editor:new{content = "test"}
 
-        -- Title container should have onTap handler
-        assert.is.equals("function", type(editor.title_container.onTap))
+        -- Title container should NOT have onTap (it blocks close button)
+        assert.is_falsy(editor.title_container.onTap, "title_container should not have onTap to avoid blocking close button")
 
         -- Toolbar container should have onTap handler
         assert.is.equals("function", type(editor.toolbar_container.onTap))
+
+        -- There should also be a Hide Keyboard button in the toolbar
+        local found_hide_button = false
+        for _, btn in ipairs(editor.toolbar_buttons) do
+          if btn.id == "hide_keyboard" then
+            found_hide_button = true
+            break
+          end
+        end
+        assert.is_truthy(found_hide_button, "Hide Keyboard button should exist in toolbar")
       end)
 
       it("should have Hide Keyboard button in toolbar", function()
@@ -860,6 +871,83 @@ describe("markdown_editor", function()
         local editor = markdown_editor:new{content = "test"}
 
         assert.is.equals(5, editor.auto_dismiss_delay)
+      end)
+    end)
+
+    describe("bug: close button (×) not working", function()
+      it("should have close_button", function()
+        -- The close button (×) should exist
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is_truthy(editor.close_button, "close_button should exist")
+      end)
+
+      it("should have close_button with correct text", function()
+        -- Close button should display ×
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("×", editor.close_button.text)
+      end)
+
+      it("should have close_button with callback function", function()
+        -- Close button should have a callback
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("function", type(editor.close_button.callback))
+      end)
+
+      it("should have _doneAndClose method", function()
+        -- The close button calls _doneAndClose
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("function", type(editor._doneAndClose))
+      end)
+
+      it("should call _doneAndClose when close button is clicked", function()
+        -- Clicking the close button should call _doneAndClose
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Mock the _doneAndClose method to track if it was called
+        local done_and_close_called = false
+        local original_done_and_close = editor._doneAndClose
+        editor._doneAndClose = function()
+          done_and_close_called = true
+        end
+
+        -- Simulate clicking the close button
+        if editor.close_button.callback then
+          editor.close_button.callback()
+        end
+
+        -- Restore original method
+        editor._doneAndClose = original_done_and_close
+
+        assert.is_truthy(done_and_close_called, "_doneAndClose should be called when close button is clicked")
+      end)
+
+      it("should have main_frame widget", function()
+        -- _doneAndClose closes the main_frame
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is_truthy(editor.main_frame, "main_frame should exist")
+      end)
+
+      it("should NOT have onTap handler on title_container that blocks button clicks", function()
+        -- The title_container should NOT have an onTap handler that intercepts clicks
+        -- This was preventing the close button from working
+        local editor = markdown_editor:new{content = "test"}
+
+        -- title_container should exist
+        assert.is_truthy(editor.title_container, "title_container should exist")
+
+        -- title_container should NOT have an onTap method, or if it does,
+        -- it should not block button clicks
+        -- The best solution is to NOT have onTap on title_container at all
+        if editor.title_container.onTap then
+          -- If onTap exists, it should be nil or not interfere with buttons
+          -- But ideally, it shouldn't exist
+          assert.is_falsy(true, "title_container should not have onTap handler as it blocks button clicks")
+        end
       end)
     end)
   end)

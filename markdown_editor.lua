@@ -524,22 +524,13 @@ function MarkdownEditor:_buildMainLayout()
     self.title_widget,
   }
 
-  -- Make title container tappable to dismiss keyboard
+  -- Title container (no onTap handler - let buttons handle their own clicks)
   self.title_container = FrameContainer:new{
     margin = 0,
     bordersize = 0,
     background = Blitbuffer.COLOR_WHITE,
     self.title_bar,
   }
-
-  -- Add tap handler to title container
-  function self.title_container:onTap()
-    -- Dismiss keyboard if open
-    if self.editor and self.editor.keyboard then
-      self.editor:onCloseKeyboard()
-    end
-    return true
-  end
 
   -- Action buttons row (at top, won't be covered by keyboard)
   local action_group = HorizontalGroup:new{
