@@ -652,7 +652,7 @@ function MarkdownEditor:_applyCurrentSelection(format_type, ...)
   local current_text = self.content
 
   -- For headings, apply only to the current line if cursor position is available
-  if format_type == "heading" and self.editor and self.editor.keyboard then
+  if format_type == "heading" and self.editor then
     local cursor_pos = self.editor.cursor or 0
     local level = select(1, ...) or 1
 
