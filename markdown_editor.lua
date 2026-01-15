@@ -619,6 +619,16 @@ function MarkdownEditor:_applyCurrentSelection(format_type, ...)
   self.content = formatted
   if self.editor and type(self.editor.setText) == "function" then
     self.editor:setText(formatted)
+
+    -- Position cursor after heading prefix for headings
+    if format_type == "heading" then
+      local level = select(1, ...) or 1
+      -- Cursor position = # of #'s + 1 for the space
+      local cursor_pos = level + 1
+      if self.editor.cursor then
+        self.editor.cursor = cursor_pos
+      end
+    end
   end
 
   -- Trigger auto-save after formatting

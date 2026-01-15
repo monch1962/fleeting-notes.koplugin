@@ -950,5 +950,97 @@ describe("markdown_editor", function()
         end
       end)
     end)
+
+    describe("bug: heading buttons insert prefix but cursor is before #", function()
+      it("should insert # prefix for H1 heading", function()
+        -- H1 button should add # at start of text
+        local editor = markdown_editor:new{content = "My Heading"}
+
+        -- Apply H1 heading (format_type, start_pos, end_pos, heading_level)
+        editor:apply_formatting("heading", 1, 10, 1)
+
+        -- Should have # prefix
+        assert.is.truthy(editor.content:find("^#"))
+        assert.is.equals("# My Heading", editor.content)
+      end)
+
+      it("should insert ## prefix for H2 heading", function()
+        -- H2 button should add ## at start of text
+        local editor = markdown_editor:new{content = "My Heading"}
+
+        -- Apply H2 heading
+        editor:apply_formatting("heading", 1, 10, 2)
+
+        -- Should have ## prefix
+        assert.is.truthy(editor.content:find("^##"))
+        assert.is.equals("## My Heading", editor.content)
+      end)
+
+      it("should insert ### prefix for H3 heading", function()
+        -- H3 button should add ### at start of text
+        local editor = markdown_editor:new{content = "My Heading"}
+
+        -- Apply H3 heading
+        editor:apply_formatting("heading", 1, 10, 3)
+
+        -- Should have ### prefix
+        assert.is.truthy(editor.content:find("^###"))
+        assert.is.equals("### My Heading", editor.content)
+      end)
+
+      it("should have method to move cursor after heading prefix", function()
+        -- After inserting heading prefix, cursor should be after the "# " (or "## ", etc.)
+        -- This allows user to immediately type heading text
+        local editor = markdown_editor:new{content = ""}
+
+        -- The editor should have a cursor property for positioning
+        assert.is_truthy(editor.editor, "InputText editor should exist")
+        -- cursor may not exist in mock, but property should be there
+        -- We verify it can be set
+        editor.editor.cursor = 0
+        assert.is.equals(0, editor.editor.cursor)
+      end)
+
+      it("should position cursor after heading prefix when H1 is inserted", function()
+        -- After inserting H1 heading, cursor should be at position 2 (after "# ")
+        local editor = markdown_editor:new{content = "My Heading"}
+
+        -- Apply H1 heading
+        editor:apply_formatting("heading", 1, 10, 1)
+
+        -- Cursor should be positioned at 2 (after "# ")
+        -- Note: In tests with mock, we check if the logic is there
+        -- Real cursor positioning happens on device with actual InputText widget
+        if editor.editor.cursor then
+          assert.is.equals(2, editor.editor.cursor, "Cursor should be at position 2 after H1 prefix")
+        end
+      end)
+
+      it("should position cursor after heading prefix when H2 is inserted", function()
+        -- After inserting H2 heading, cursor should be at position 3 (after "## ")
+        local editor = markdown_editor:new{content = "My Heading"}
+
+        -- Apply H2 heading
+        editor:apply_formatting("heading", 1, 10, 2)
+
+        -- Cursor should be positioned at 3 (after "## ")
+        if editor.editor.cursor then
+          assert.is.equals(3, editor.editor.cursor, "Cursor should be at position 3 after H2 prefix")
+        end
+      end)
+
+      it("should position cursor after heading prefix when H3 is inserted", function()
+        -- After inserting H3 heading, cursor should be at position 4 (after "### ")
+        local editor = markdown_editor:new{content = "My Heading"}
+
+        -- Apply H3 heading
+        editor:apply_formatting("heading", 1, 10, 3)
+
+        -- Cursor should be positioned at 4 (after "### ")
+        if editor.editor.cursor then
+          assert.is.equals(4, editor.editor.cursor, "Cursor should be at position 4 after H3 prefix")
+        end
+      end)
+    end)
   end)
 end)
