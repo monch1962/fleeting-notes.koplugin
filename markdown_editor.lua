@@ -85,14 +85,30 @@ function MarkdownEditor:init()
   self.last_saved_content = ""    -- Track last saved content for comparison
   self.auto_save_pending = false  -- Flag for pending save operation
 
+  -- Edit mode state
+  self.is_editing = false  -- Start in read-only mode (no keyboard)
+
   -- Build UI
   self:_buildToolbar()
-  self:_buildEditor()
   self:_buildActionButtons()
+  self:_buildEditor()  -- Build editor (will be read-only initially)
   self:_buildMainLayout()
 
   -- Map keyboard shortcuts
   self.key_events.Back = { { "Back" }, doc = "dismiss keyboard or close" }
+end
+
+-- Toggle between read-only and edit modes
+function MarkdownEditor:_toggleEditMode()
+  self.is_editing = not self.is_editing
+
+  if self.is_editing then
+    -- Switch to edit mode (show InputText with keyboard)
+    self:_rebuildEditorForEditing()
+  else
+    -- Switch to read-only mode (show TextBoxWidget, hide keyboard)
+    self:_rebuildEditorForReading()
+  end
 end
 
 -- Handle Back button to dismiss keyboard or close editor
@@ -299,11 +315,9 @@ function MarkdownEditor:_buildToolbar()
   end
 end
 
--- Build the text editor area
+-- Build the text editor area (read-only mode by default)
 function MarkdownEditor:_buildEditor()
   -- Calculate available height for editor more conservatively
-  -- Reserve: title (60) + spans (30) + buttons (60) + spans (30) + toolbar (60) + spans (30) + padding/borders (40) = 310
-  -- Also leave extra margin at bottom to ensure everything fits
   local reserved_space = 350
   local available_height = Screen:getHeight() - reserved_space
 
@@ -314,16 +328,58 @@ function MarkdownEditor:_buildEditor()
     available_height = 600
   end
 
+  -- Start with read-only TextBoxWidget (no keyboard)
+  self:_rebuildEditorForReading()
+end
+
+-- Build read-only editor (TextBoxWidget, no keyboard)
+function MarkdownEditor:_rebuildEditorForReading()
+  local available_height = Screen:getHeight() - 350
+  if available_height < 100 then available_height = 100
+  elseif available_height > 600 then available_height = 600 end
+
+  -- Save current content if switching from edit mode
+  local current_text = ""
+  if self.editor then
+    current_text = self.editor:getText() or self.content
+  else
+    current_text = self.content
+  end
+
+  self.editor = TextBoxWidget:new{
+    text = current_text,
+    face = self.face,
+    width = math.min(Screen:getWidth() - 40, 800),
+    height = available_height,
+    alignment = "left",
+  }
+
+  self.content = current_text
+  self:_updateMainLayout()
+end
+
+-- Build editable editor (InputText with keyboard)
+function MarkdownEditor:_rebuildEditorForEditing()
+  local available_height = Screen:getHeight() - 350
+  if available_height < 100 then available_height = 100
+  elseif available_height > 600 then available_height = 600 end
+
+  -- Save current content
+  local current_text = ""
+  if self.editor then
+    current_text = self.editor:getText() or self.content
+  else
+    current_text = self.content
+  end
+
   self.editor = InputText:new{
-    text = self.content,
+    text = current_text,
     face = self.face,
     width = math.min(Screen:getWidth() - 40, 800),
     height = available_height,
     scroll = true,
     alignment = "left",
     parent = self,
-    -- Try to make keyboard less modal
-    readonly = false,
     edit_callback = function()
       -- Trigger auto-save when text is modified
       if not self.auto_save_pending then
@@ -335,17 +391,30 @@ function MarkdownEditor:_buildEditor()
     end,
   }
 
-  -- Remove InputText's default Back button handling by setting key_events to empty
-  -- This allows the parent container's onBack to handle the Back button
+  -- Remove InputText's default Back button handling
   self.editor.key_events = {}
 
-  -- Override InputText's keyboard close to notify parent
+  -- When keyboard is dismissed, switch back to read-only mode
   local original_close_keyboard = self.editor.onCloseKeyboard
   function self.editor:onCloseKeyboard()
     if original_close_keyboard then
       original_close_keyboard(self)
     end
+    -- Switch back to read-only mode after keyboard is dismissed
+    UIManager:nextTick(function()
+      if self.parent and self.parent._toggleEditMode then
+        self.parent:_toggleEditMode()
+      end
+    end)
   end
+
+  self.content = current_text
+  self:_updateMainLayout()
+
+  -- Automatically show keyboard when entering edit mode
+  UIManager:nextTick(function()
+    self.editor:onTap()
+  end)
 end
 
 -- Build save and cancel buttons
@@ -413,18 +482,16 @@ end
 
 -- Build the main layout
 function MarkdownEditor:_buildMainLayout()
-  -- Dismiss Keyboard button (for Kobo and other touch-only devices)
-  self.dismiss_keyboard_button = Button:new{
-    text = _("Dismiss Keyboard"),
+  -- Edit Text button (to toggle keyboard on/off)
+  self.edit_button = Button:new{
+    text = _("Edit Text"),
     callback = function()
-      if self.editor and self.editor.keyboard then
-        self.editor:onCloseKeyboard()
-      end
+      self:_toggleEditMode()
     end,
-    width = 160,
+    width = 110,
     height = 40,
     font_face = "smallfont",
-    font_size = 14,
+    font_size = 16,
     bordersize = 2,
     radius = 5,
     background = Blitbuffer.COLOR_DARK_GRAY,
@@ -434,14 +501,7 @@ function MarkdownEditor:_buildMainLayout()
   self.close_button = Button:new{
     text = "×",
     callback = function()
-      -- Dismiss keyboard first if it's open
-      if self.editor and self.editor.keyboard then
-        self.editor:onCloseKeyboard()
-      end
-      -- Then close the editor
-      UIManager:nextTick(function()
-        self:_doneAndClose()
-      end)
+      self:_doneAndClose()
     end,
     width = 50,
     height = 40,
@@ -456,12 +516,12 @@ function MarkdownEditor:_buildMainLayout()
   self.title_widget = TextBoxWidget:new{
     text = _("Fleeting Note"),
     face = Font:getFace("tfont", 20),
-    width = math.min(Screen:getWidth() - 250, 500),  -- Leave room for buttons
+    width = math.min(Screen:getWidth() - 200, 500),
   }
 
-  -- Title bar with dismiss keyboard button, close button, and title
+  -- Title bar with edit button, close button, and title
   self.title_bar = HorizontalGroup:new{
-    self.dismiss_keyboard_button,
+    self.edit_button,
     HorizontalSpan:new{ width = 10 },
     self.close_button,
     HorizontalSpan:new{ width = 10 },
@@ -527,13 +587,13 @@ function MarkdownEditor:_buildMainLayout()
     background = Blitbuffer.COLOR_WHITE,
     VerticalGroup:new{
       align = "center",
-      self.title_container,    -- Tappable to dismiss keyboard
+      self.title_container,
       VerticalSpan:new{ width = 10 },
-      action_group,           -- Buttons at TOP - won't be covered by keyboard
+      action_group,
       VerticalSpan:new{ width = 10 },
-      self.toolbar_container, -- Tappable to dismiss keyboard
+      self.toolbar_container,
       VerticalSpan:new{ width = 10 },
-      self.editor,            -- Editor below toolbar
+      self.editor,
     }
   }
 
@@ -543,26 +603,35 @@ function MarkdownEditor:_buildMainLayout()
   }
 end
 
+-- Update main layout after switching editor modes
+function MarkdownEditor:_updateMainLayout()
+  -- Rebuild the main layout with the updated editor
+  self:_buildMainLayout()
+
+  -- Trigger UI refresh
+  UIManager:setDirty(self.main_frame, "ui")
+end
+
 -- Apply formatting to current text selection
 -- @param format_type string: Type of formatting to apply
 -- @param ...: Additional parameters (e.g., heading level)
 function MarkdownEditor:_applyCurrentSelection(format_type, ...)
+  -- If in read-only mode, switch to edit mode first
+  if not self.is_editing then
+    self:_toggleEditMode()
+    -- Don't apply formatting yet, wait for user to enter edit mode
+    return
+  end
+
   -- Get current text
   local current_text = self.editor:getText()
 
-  -- Get selection (if any) - TextBoxWidget may not expose this directly
-  -- For now, we'll apply to the entire text or insert at cursor position
-  -- In a full implementation, you'd need to track cursor/selection state
-
-  -- Simple implementation: apply to entire content
-  -- In KOReader, TextBoxWidget doesn't easily expose cursor position
-  -- A more complete implementation would need custom cursor tracking
-
+  -- Apply formatting
   local formatted = markdown_formatter.apply_formatting(
     current_text,
     format_type,
-    1,  -- start_pos (simplified)
-    #current_text,  -- end_pos (simplified)
+    1,
+    #current_text,
     ...
   )
 

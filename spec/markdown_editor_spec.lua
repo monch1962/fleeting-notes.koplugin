@@ -119,15 +119,31 @@ describe("markdown_editor", function()
     local TextBoxWidget = createWidgetMock()
     TextBoxWidget.getText = function(self) return self.text or "" end
     TextBoxWidget.setText = function(self, text) self.text = text end
+    TextBoxWidget.onTap = function(self) end  -- Add onTap method
     package.loaded["ui/widget/textboxwidget"] = TextBoxWidget
 
     -- InputText widget mock
     local InputText = createWidgetMock()
     InputText.getText = function(self) return self.text or "" end
     InputText.setText = function(self, text) self.text = text end
+    InputText.onTap = function(self) end
+    InputText.onCloseKeyboard = function(self) end
+    InputText.key_events = {}
     package.loaded["ui/widget/inputtext"] = InputText
 
-    package.loaded["ui/widget/button"] = createWidgetMock()
+    -- Button widget mock - needs to simulate callback execution
+    local ButtonMock = createWidgetMock()
+    ButtonMock.callback = nil
+    function ButtonMock:new(cls)
+      local obj = createWidgetMock():new(cls)
+      -- When button is "clicked", execute its callback
+      if obj.callback then
+        obj.callback()
+      end
+      return obj
+    end
+    package.loaded["ui/widget/button"] = ButtonMock
+
     package.loaded["ui/widget/horizontalgroup"] = createWidgetMock()
     package.loaded["ui/widget/verticalgroup"] = createWidgetMock()
     package.loaded["ui/widget/horizontalspan"] = createWidgetMock()
