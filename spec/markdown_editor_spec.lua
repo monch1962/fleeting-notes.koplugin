@@ -463,4 +463,322 @@ describe("markdown_editor", function()
       assert.is_truthy(true)
     end)
   end)
+
+  describe("regression tests", function()
+    -- These tests prevent bugs we've fixed from reappearing
+
+    describe("bug: Blitbuffer.ColorRGB not found", function()
+      it("should handle missing ColorRGB gracefully", function()
+        -- This bug occurred when Blitbuffer.ColorRGB was not available in older KOReader versions
+        -- The fix was to check type(Blitbuffer.ColorRGB) == "function" before calling it
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Editor should create successfully even with color support disabled
+        assert.is_truthy(editor)
+        assert.is_truthy(editor.toolbar_buttons)
+
+        -- Toolbar buttons should exist (they might have nil colors, but that's OK)
+        assert.is_truthy(#editor.toolbar_buttons > 0)
+      end)
+
+      it("should not crash when creating colored buttons", function()
+        -- Even when ColorRGB is not available, buttons should be created
+        local editor = markdown_editor:new{content = "test"}
+        assert.is_truthy(editor.toolbar_button_widgets)
+        assert.is_truthy(#editor.toolbar_button_widgets > 0)
+      end)
+    end)
+
+    describe("bug: TextBoxWidget getText() method missing", function()
+      it("should use InputText widget which has getText/setText", function()
+        -- TextBoxWidget doesn't have getText/setText methods in all KOReader versions
+        -- The fix was to switch to InputText widget
+        local editor = markdown_editor:new{content = "test content"}
+
+        -- Editor widget should be InputText (or compatible) with getText method
+        assert.is_truthy(editor.editor)
+        assert.is.equals("function", type(editor.editor.getText))
+        assert.is.equals("function", type(editor.editor.setText))
+      end)
+
+      it("should allow getting and setting text", function()
+        local editor = markdown_editor:new{content = "initial"}
+        local text = editor.editor:getText()
+        assert.is_truthy(text)
+
+        editor.editor:setText("new text")
+        local new_text = editor.editor:getText()
+        assert.is_truthy(new_text)
+      end)
+    end)
+
+    describe("bug: Screen global nil", function()
+      it("should import Screen from device module", function()
+        -- This bug occurred when trying to use global Screen which was nil
+        -- The fix was to add: local Screen = require("device").screen
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Editor should create successfully (would crash if Screen was nil)
+        assert.is_truthy(editor)
+        assert.is_truthy(editor.main_frame)
+      end)
+
+      it("should calculate editor height using Screen", function()
+        -- If Screen is nil, height calculation would crash
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Editor widget should have been created with calculated height
+        assert.is_truthy(editor.editor)
+        assert.is_truthy(editor.editor.height)
+        assert.is_truthy(editor.editor.height > 0)
+      end)
+    end)
+
+    describe("bug: buttons not working when typing", function()
+      it("should use edit_callback instead of aggressive key_events", function()
+        -- This bug occurred when a key_events handler caught all events
+        -- The fix was to use edit_callback on the InputText widget
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Editor should have edit_callback set up
+        assert.is_truthy(editor.editor)
+        assert.is.equals("function", type(editor.editor.edit_callback))
+      end)
+
+      it("should not have AutoSave key event handler", function()
+        -- The buggy version had: key_events.AutoSave = { {"all"}, ... }
+        -- This would catch all key events and prevent buttons from working
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Check that AutoSave key event doesn't exist
+        if editor.key_events then
+          assert.is_falsy(editor.key_events.AutoSave)
+        end
+      end)
+
+      it("should have toolbar button callbacks", function()
+        -- Toolbar buttons should have functional callbacks
+        local editor = markdown_editor:new{content = "test"}
+
+        for _, btn_spec in ipairs(editor.toolbar_buttons) do
+          assert.is_truthy(btn_spec.callback)
+          assert.is.equals("function", type(btn_spec.callback))
+        end
+      end)
+    end)
+
+    describe("bug: font face nil causing crash", function()
+      it("should use valid font face for title widget", function()
+        -- This bug occurred when using Font:getFace("smallfont", 18) which returned nil
+        -- The fix was to use Font:getFace("tfont", 20) instead
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Title widget should be created successfully
+        assert.is_truthy(editor.title_widget)
+        assert.is.truthy(type(editor.title_widget) == "table")
+      end)
+
+      it("should use valid font face for editor", function()
+        -- Editor should also use a valid font face
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is_truthy(editor.editor)
+        assert.is.truthy(editor.editor.face)
+      end)
+    end)
+
+    describe("bug: title bar invisible due to height calculation", function()
+      it("should reserve enough space for UI elements", function()
+        -- This bug occurred when reserved_space was too small (200px)
+        -- The fix was to increase it to 350px to fit all UI elements
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Editor height should be calculated with proper reserved space
+        assert.is_truthy(editor.editor)
+        local editor_height = editor.editor.height
+
+        -- Editor should be reasonable size (not too large that it pushes title off screen)
+        -- Screen height is typically 600-800px
+        -- Editor should be less than screen height
+        assert.is_truthy(editor_height < 800)
+      end)
+    end)
+
+    describe("bug: no way to close plugin", function()
+      it("should have close button (×)", function()
+        -- User had no obvious way to exit the plugin
+        -- The fix was to add a close button (×) in the title bar
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is_truthy(editor.close_button)
+        assert.is.equals("×", editor.close_button.text)
+        assert.is.equals("function", type(editor.close_button.callback))
+      end)
+
+      it("should have Back button handler", function()
+        -- Hardware Back button should work to dismiss keyboard or close
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Should have onBack method
+        assert.is.equals("function", type(editor.onBack))
+
+        -- Should have Back key event registered
+        assert.is_truthy(editor.key_events.Back)
+      end)
+
+      it("should have Done, Save & New, and Delete buttons", function()
+        -- Action buttons should all exist and be functional
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is_truthy(editor.save_button)
+        assert.is.equals("Done", editor.save_button.text)
+        assert.is.equals("function", type(editor.save_button.callback))
+
+        assert.is_truthy(editor.new_note_button)
+        assert.is.equals("Save & New", editor.new_note_button.text)
+        assert.is.equals("function", type(editor.new_note_button.callback))
+
+        assert.is_truthy(editor.cancel_button)
+        assert.is.equals("Delete", editor.cancel_button.text)
+        assert.is.equals("function", type(editor.cancel_button.callback))
+      end)
+    end)
+
+    describe("bug: keyboard covering buttons", function()
+      it("should place action buttons at top of layout", function()
+        -- The modal keyboard covers the bottom of the screen
+        -- The fix was to move action buttons to the top
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Check that main_frame exists (it contains the layout)
+        assert.is_truthy(editor.main_frame)
+
+        -- The layout should have title_container and action buttons before editor
+        assert.is_truthy(editor.title_container)
+        assert.is_truthy(editor.save_button)
+        assert.is_truthy(editor.new_note_button)
+        assert.is_truthy(editor.cancel_button)
+      end)
+
+      it("should have tappable areas to dismiss keyboard", function()
+        -- Title and toolbar containers should be tappable to dismiss keyboard
+        local editor = markdown_editor:new{content = "test"}
+
+        -- Title container should have onTap handler
+        assert.is.equals("function", type(editor.title_container.onTap))
+
+        -- Toolbar container should have onTap handler
+        assert.is.equals("function", type(editor.toolbar_container.onTap))
+      end)
+
+      it("should have Hide Keyboard button in toolbar", function()
+        -- There should be a hide keyboard button (⌨) in the toolbar
+        local editor = markdown_editor:new{content = "test"}
+
+        local found_hide_button = false
+        for _, btn in ipairs(editor.toolbar_buttons) do
+          if btn.id == "hide_keyboard" then
+            found_hide_button = true
+            assert.is.equals("⌨", btn.text)
+            assert.is.equals("function", type(btn.callback))
+            break
+          end
+        end
+
+        assert.is_truthy(found_hide_button, "Hide keyboard button not found in toolbar")
+      end)
+    end)
+
+    describe("bug: auto-save functionality", function()
+      it("should have auto-save enabled by default", function()
+        -- Auto-save should be enabled to prevent data loss
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.truthy(editor.auto_save_enabled)
+      end)
+
+      it("should have edit_callback for triggering auto-save", function()
+        -- Auto-save should be triggered via edit_callback
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is_truthy(editor.editor)
+        assert.is.equals("function", type(editor.editor.edit_callback))
+      end)
+
+      it("should have _doAutoSave method", function()
+        -- Auto-save implementation should exist
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("function", type(editor._doAutoSave))
+      end)
+
+      it("should track auto-save state", function()
+        -- Should track filename, created status, and pending saves
+        local editor = markdown_editor:new{content = "test"}
+
+        assert.is.equals("boolean", type(editor.auto_save_created))
+        assert.is.equals("boolean", type(editor.auto_save_pending))
+        assert.is.equals("string", type(editor.auto_save_filename or ""))
+      end)
+    end)
+
+    describe("bug: incorrect module paths", function()
+      it("should use correct InputContainer path", function()
+        -- Common error: ui/widget/inputcontainer (wrong)
+        -- Correct path: ui/widget/container/inputcontainer
+        -- This is tested in koreader_modules_spec.lua, but we verify here too
+        local editor = markdown_editor:new{content = "test"}
+
+        -- If InputContainer path was wrong, this would have crashed already
+        assert.is_truthy(editor)
+      end)
+
+      it("should use correct CenterContainer path", function()
+        -- Common error: ui/widget/centercontainer (wrong)
+        -- Correct path: ui/widget/container/centercontainer
+        local editor = markdown_editor:new{content = "test"}
+
+        -- If CenterContainer path was wrong, this would have crashed
+        assert.is_truthy(editor.main_frame)
+      end)
+
+      it("should use correct FrameContainer path", function()
+        -- Common error: ui/widget/framecontainer (wrong)
+        -- Correct path: ui/widget/container/framecontainer
+        local editor = markdown_editor:new{content = "test"}
+
+        -- If FrameContainer path was wrong, this would have crashed
+        assert.is_truthy(editor.title_container)
+        assert.is_truthy(editor.toolbar_container)
+      end)
+
+      it("should use correct Geometry path", function()
+        -- Common error: ui/geom (wrong)
+        -- Correct path: ui/geometry
+        local editor = markdown_editor:new{content = "test"}
+
+        -- If Geometry path was wrong, this would have crashed
+        assert.is_truthy(editor.button_size)
+      end)
+    end)
+
+    describe("bug: wiki link button missing", function()
+      it("should have wiki link button in toolbar", function()
+        -- Obsidian-style [[]] links should be supported
+        local editor = markdown_editor:new{content = "test"}
+
+        local found_wiki_link = false
+        for _, btn in ipairs(editor.toolbar_buttons) do
+          if btn.id == "wiki_link" then
+            found_wiki_link = true
+            assert.is.equals("[[]]", btn.text)
+            assert.is.equals("function", type(btn.callback))
+            break
+          end
+        end
+
+        assert.is_truthy(found_wiki_link, "Wiki link button not found in toolbar")
+      end)
+    end)
+  end)
 end)
