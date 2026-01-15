@@ -421,7 +421,8 @@ function MarkdownEditor:_rebuildEditorForEditing()
   -- Use self.content as the source of truth
   local current_text = self.content or ""
 
-  self.editor = InputText:new{
+  -- Create InputText widget first
+  local new_editor = InputText:new{
     text = current_text,
     face = self.face,
     width = math.min(Screen:getWidth() - 40, 800),
@@ -430,9 +431,6 @@ function MarkdownEditor:_rebuildEditorForEditing()
     alignment = "left",
     parent = self,
     edit_callback = function()
-      -- Update self.content when text changes
-      self.content = self.editor:getText()
-
       -- Reset auto-dismiss timer when user types
       self:_resetAutoDismissTimer()
 
@@ -447,26 +445,30 @@ function MarkdownEditor:_rebuildEditorForEditing()
   }
 
   -- Remove InputText's default Back button handling
-  self.editor.key_events = {}
+  new_editor.key_events = {}
 
   -- When keyboard is dismissed, switch back to read-only mode
-  local original_close_keyboard = self.editor.onCloseKeyboard
-  function self.editor:onCloseKeyboard()
+  local editor_instance = self  -- Capture MarkdownEditor instance
+  local original_close_keyboard = new_editor.onCloseKeyboard
+  function new_editor:onCloseKeyboard()
     -- Update content one last time before closing
-    if self.editor and type(self.editor.getText) == "function" then
-      self.content = self.editor:getText()
+    if type(new_editor.getText) == "function" then
+      editor_instance.content = new_editor:getText()
     end
 
     if original_close_keyboard then
-      original_close_keyboard(self)
+      original_close_keyboard(new_editor)
     end
     -- Switch back to read-only mode after keyboard is dismissed
     UIManager:nextTick(function()
-      if self.parent and self.parent._toggleEditMode then
-        self.parent:_toggleEditMode()
+      if editor_instance._toggleEditMode then
+        editor_instance:_toggleEditMode()
       end
     end)
   end
+
+  -- Now assign to self.editor
+  self.editor = new_editor
 
   self:_updateMainLayout()
 
